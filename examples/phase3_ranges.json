@@ -1,0 +1,7 @@
+{
+  "kind": "programmatic-v3-fixture",
+  "execution": "pass the request member to dispatch_v3; not a direct CLI envelope",
+  "request": {"version": 3, "operation": "range-normalize", "payload": {"text": "AA,AKs:0.5"}},
+  "provenance": "poker-solver bundled synthetic example; not presolved",
+  "accuracy_claim": "synthetic input fixture; no equilibrium chart claim"
+}

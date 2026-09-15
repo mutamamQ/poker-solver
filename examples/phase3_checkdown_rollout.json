@@ -1,0 +1,10 @@
+{
+  "kind": "checkdown-equity-template",
+  "engine_mode": "checkdown-equity",
+  "required_caller_data": "explicit-finite-game-required",
+  "approximate": true,
+  "limitation": "check-only rollout; ignores future betting",
+  "presolved": false,
+  "provenance": "poker-solver bundled synthetic example; not presolved",
+  "accuracy_claim": "synthetic input fixture; no equilibrium chart claim"
+}

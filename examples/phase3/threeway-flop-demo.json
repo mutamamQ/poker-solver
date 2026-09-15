@@ -1,0 +1,10 @@
+{
+  "kind": "three-player-postflop-template",
+  "button": 0,
+  "starting_stacks": [1000, 1000, 1000],
+  "contributions": [100, 100, 100],
+  "board": [0, 1, 2],
+  "wager_targets": [200, 500],
+  "showdown": "caller-supplied-ranks-required",
+  "provenance": "poker-solver bundled example; not presolved"
+}

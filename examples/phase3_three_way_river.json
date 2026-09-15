@@ -1,0 +1,13 @@
+{
+  "kind": "three-player-postflop-template",
+  "name": "three-way river",
+  "button": 0,
+  "starting_stacks": [1000, 1000, 1000],
+  "contributions": [100, 100, 100],
+  "board": [0, 1, 2, 3, 4],
+  "wager_targets": [200, 500],
+  "required_caller_data": "caller-supplied-ranks-required",
+  "presolved": false,
+  "provenance": "poker-solver bundled synthetic example; not presolved",
+  "accuracy_claim": "synthetic input fixture; no equilibrium chart claim"
+}

@@ -1,0 +1,11 @@
+{
+  "kind": "heads-up-preflop-template",
+  "name": "SB vs BB 15bb",
+  "starting_stacks": [1500, 1500],
+  "forced_posts": [50, 100],
+  "sizing_expressions": [{"unit": "big-blinds", "value": 2.0}, {"unit": "all-in"}],
+  "required_caller_data": "caller-supplied-terminal-table-required",
+  "presolved": false,
+  "provenance": "poker-solver bundled synthetic example; not presolved",
+  "accuracy_claim": "synthetic input fixture; no equilibrium chart claim"
+}

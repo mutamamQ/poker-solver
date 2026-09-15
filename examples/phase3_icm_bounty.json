@@ -1,0 +1,8 @@
+{
+  "kind": "programmatic-v3-fixture",
+  "execution": "pass the request member to dispatch_v3; not a direct CLI envelope",
+  "request": {"version": 3, "operation": "bounty-ko", "payload": {"eliminated_bounty": "75", "recipient_shares": {"0": "2/3", "1": "1/3"}}},
+  "related_icm_request": {"version": 3, "operation": "icm", "payload": {"stacks": [50, 30, 20], "payouts": [100, 50, 0]}},
+  "provenance": "poker-solver bundled synthetic example; not presolved",
+  "accuracy_claim": "synthetic input fixture; no equilibrium chart claim"
+}

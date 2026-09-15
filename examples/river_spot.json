@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "board": ["2c", "3d", "4h", "9s", "Kc"],
+  "pot": 2,
+  "stack": 1,
+  "bet": 1,
+  "range0": [
+    {"cards": ["As", "5s"], "weight": 1},
+    {"cards": ["Qs", "Js"], "weight": 1}
+  ],
+  "range1": [
+    {"cards": ["Kh", "Qh"], "weight": 1},
+    {"cards": ["9h", "8h"], "weight": 1}
+  ]
+}

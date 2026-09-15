@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "starting_street": "flop",
+  "starting_board": ["2c", "3d", "4h"],
+  "initial_dead_pot": 2,
+  "effective_stack": 1,
+  "player0_combos": [
+    {"cards": ["As", "5s"], "weight": 1.0}
+  ],
+  "player1_combos": [
+    {"cards": ["Kh", "Qh"], "weight": 1.0}
+  ],
+  "allowed_runouts": [
+    ["9s", "Kc"],
+    ["Tc", "Jd"]
+  ],
+  "betting_mode": "pot-limit",
+  "wager_targets": [1]
+}
