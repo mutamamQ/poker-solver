@@ -1,0 +1,14 @@
+# Phase 4 S1-I1 repaired candidate manifest
+
+Frozen: 2026-09-15T16:26:41Z
+Base commit: 7a817e618a3c0898b531e88440b490323c62b49b
+Parent gates: focused 158 passed; compileall + full 514 passed.
+
+fda0a2c3e3e4cb4c110e86b85dae62df001d88e96fc298d4080c4f5ebb8f6a86  src/poker_solver/allstreet.py
+b4250fe17d519e034a0a70e738ac372e794dfa338f9f487414eac9e28d5a1257  src/poker_solver/api_v4.py
+aa08d546495091f394c75f5c716b63fa9342d785588eafa1e367f2d8e59dc0d4  src/poker_solver/bounded_tree.py
+bdacc32688361f0cec48205b722aca8843c24dca4f58dd11479d5aa85fdfa490  src/poker_solver/multistreet.py
+ecc51959f3b834684ed33595cab4dd5eba579b43fb615d066d147d08be7c77ec  tests/test_allstreet_config.py
+400eaba0baa7756443fef38e2eeb41206f83cf7aef6b2f969389905d4ffe2ae9  tests/test_allstreet_state.py
+cae81064adbf9b681d03b255ca8590a73630aa7050e5a4df5c35b76c0fd9ad03  tests/test_api_v4.py
+1351676894f588e29762f5046777f1ba9b1be527ddd2598cfba4f76782c519a0  tests/test_bounded_tree.py
