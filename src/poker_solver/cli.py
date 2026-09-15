@@ -17,6 +17,7 @@ from .api import (
     solve_multistreet,
 )
 from .api_v3 import dispatch_v3
+from .api_v4 import dispatch_v4
 from .best_response import nash_conv
 from .cards import format_card, parse_card, parse_cards
 from .cfr import CFRSolver
@@ -140,6 +141,10 @@ def build_parser() -> argparse.ArgumentParser:
     phase3_parser.add_argument("request", help="JSON request file path or '-' for stdin")
     phase3_parser.add_argument("--json", action="store_true")
 
+    phase4_parser = sub.add_parser("phase4", help="run a strict bounded version-4 JSON operation")
+    phase4_parser.add_argument("request", help="JSON request file path or '-' for stdin")
+    phase4_parser.add_argument("--json", action="store_true")
+
     return parser
 
 
@@ -207,6 +212,9 @@ def run(args: argparse.Namespace) -> int:
         return 0
     if args.command == "phase3":
         _emit(dispatch_v3(load_json_input(args.request)), args.json)
+        return 0
+    if args.command == "phase4":
+        _emit(dispatch_v4(load_json_input(args.request)), args.json)
         return 0
     raise ValueError("unknown command")
 

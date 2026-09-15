@@ -28,6 +28,12 @@ _FEATURES = {
     "opponent-inference": {"status": "implemented-bounded"},
     "icm": {"status": "implemented-bounded", "max_players": 10},
     "bounties": {"status": "implemented-immediate-one-hand"},
+    "allstreet-postflop": {
+        "status": "implemented-bounded",
+        "starting_street": "flop",
+        "continuation": "automatic-natural-terminal",
+        "interfaces": ["typed", "json-v4", "cli-phase4"],
+    },
     "fast-ddls": {"status": "unavailable", "reason": "no shipped neural continuation model"},
     "nine-way-strategic-solving": {"status": "unavailable"},
     "plo": {"status": "unavailable"},
