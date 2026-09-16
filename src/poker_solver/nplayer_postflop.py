@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from fractions import Fraction
 from math import isfinite, prod
 from types import MappingProxyType
-from typing import Mapping, TypeAlias
+from typing import Hashable, Mapping, TypeAlias
 
 from .equity import WeightedCombo as EquityWeightedCombo
 from .game_structure import (
@@ -24,6 +24,12 @@ from .game_structure import (
     verify_terminal_conservation,
 )
 from .model import Action, CHANCE, TERMINAL
+from .nplayer import (
+    NPlayerCFRSolver,
+    UnilateralDeviationCertificate,
+    expected_values_nplayer,
+    unilateral_deviation_certificate,
+)
 from .preflop import WeightedCombo as ExactWeightedCombo
 
 DealN: TypeAlias = tuple[tuple[int, int], ...]
@@ -746,4 +752,97 @@ def create_nplayer_postflop_root(
         last_raise_increment=first_target,
         raise_count=0,
         history=(),
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class NPlayerPostflopSolveResult:
+    """Detached deterministic result for the bounded typed solve facade."""
+
+    config_version: int
+    game_version: str
+    algorithm: str
+    iterations: int
+    max_nodes: int
+    max_depth: int
+    strategy: dict[Hashable, dict[Action, float]]
+    expected_values: tuple[float, ...]
+    certificate: UnilateralDeviationCertificate | None
+    metadata: Mapping[str, object]
+    provenance: str
+    approximate: bool
+
+
+def solve_nplayer_postflop(
+    config: NPlayerPostflopConfig,
+    *,
+    algorithm: str,
+    iterations: int,
+    include_deviation_certificate: bool = False,
+    max_pure_strategies: int = 100_000,
+) -> NPlayerPostflopSolveResult:
+    """Solve a bounded N-player state with deterministic full-tree vanilla CFR."""
+    if not isinstance(config, NPlayerPostflopConfig):
+        raise TypeError("config must be an NPlayerPostflopConfig")
+    if algorithm != "vanilla-cfr":
+        raise ValueError("algorithm must be vanilla-cfr")
+    if isinstance(iterations, bool) or not isinstance(iterations, int) or iterations <= 0:
+        raise ValueError("iterations must be a positive integer")
+    if not isinstance(include_deviation_certificate, bool):
+        raise ValueError("include_deviation_certificate must be boolean")
+    if (
+        isinstance(max_pure_strategies, bool)
+        or not isinstance(max_pure_strategies, int)
+        or max_pure_strategies <= 0
+    ):
+        raise ValueError("max_pure_strategies must be a positive integer")
+
+    root = create_nplayer_postflop_root(config)
+    # Include the chance root and terminal successor around the decision bound.
+    max_depth = 2 + config.num_players + config.max_raises * (config.num_players - 1)
+    solver = NPlayerCFRSolver(
+        root,
+        max_nodes=config.max_nodes,
+        max_depth=max_depth,
+    )
+    trained = solver.train(iterations)
+    strategy = {
+        key: {action: float(probability) for action, probability in policy.items()}
+        for key, policy in trained.items()
+    }
+    expected_values = expected_values_nplayer(root, strategy)
+    certificate = (
+        unilateral_deviation_certificate(
+            root,
+            strategy,
+            max_pure_strategies=max_pure_strategies,
+        )
+        if include_deviation_certificate
+        else None
+    )
+    metadata = MappingProxyType(
+        {
+            "converged": False,
+            "convergence_claim": "none",
+            "deterministic": True,
+            "deviation_certificate": (
+                "exhaustive-diagnostic-only"
+                if include_deviation_certificate
+                else "not-requested"
+            ),
+        }
+    )
+    return NPlayerPostflopSolveResult(
+        config_version=4,
+        game_version=config.version,
+        algorithm=algorithm,
+        iterations=iterations,
+        max_nodes=config.max_nodes,
+        max_depth=max_depth,
+        strategy=strategy,
+        expected_values=expected_values,
+        certificate=certificate,
+        metadata=metadata,
+        provenance="full-tree deterministic vanilla CFR; no convergence guarantee",
+        approximate=True,
     )

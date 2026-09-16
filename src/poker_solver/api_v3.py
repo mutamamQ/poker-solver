@@ -24,6 +24,13 @@ _FEATURES = {
     "nodelocks-profiles": {"status": "implemented-bounded", "interface": "programmatic"},
     "rake": {"status": "implemented-declared-policy"},
     "multiway-postflop": {"status": "implemented-bounded", "players": 3, "streets": "one-betting-round"},
+    "nplayer-postflop": {
+        "status": "implemented-bounded",
+        "players": [2, 9],
+        "streets": "one-betting-round",
+        "interfaces": ["typed", "json-v4", "cli-phase4"],
+        "deviation": "exhaustive-diagnostic-only",
+    },
     "range-tables": {"status": "implemented-bounded", "interface": "programmatic"},
     "opponent-inference": {"status": "implemented-bounded"},
     "icm": {"status": "implemented-bounded", "max_players": 10},
