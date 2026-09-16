@@ -122,6 +122,8 @@ def _validate_numeric_value(value: Any, field_name: str) -> None:
         import math
         if not math.isfinite(value):
             raise ValueError(f"{field_name} must be finite")
+    if isinstance(value, Decimal) and not value.is_finite():
+        raise ValueError(f"{field_name} must be finite")
 
 
 def convert_size_to_chips(expr: Dict[str, Any], context: Dict[str, Any]) -> int:
