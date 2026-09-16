@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from fractions import Fraction
 from math import isfinite, prod
 from types import MappingProxyType
-from typing import TypeAlias
+from typing import Hashable, TypeAlias
 
 from .game_structure import (
     ForcedPost,
@@ -17,6 +17,12 @@ from .game_structure import (
     verify_terminal_conservation,
 )
 from .model import Action, CHANCE, TERMINAL
+from .nplayer import (
+    NPlayerCFRSolver,
+    UnilateralDeviationCertificate,
+    expected_values_nplayer,
+    unilateral_deviation_certificate,
+)
 from .preflop import WeightedCombo
 from .sizing import fixed_sizes, validate_size_expression
 
@@ -1030,4 +1036,101 @@ def create_nplayer_preflop_root(config: NPlayerPreflopConfig) -> NPlayerPreflopS
         last_raise_increment=outer_wager,
         raise_count=0,
         history=(),
+    )
+
+
+def _freeze_result_metadata(value: object) -> object:
+    """Detach and freeze nested standard containers while preserving keys."""
+    if isinstance(value, Mapping):
+        return MappingProxyType({
+            key: _freeze_result_metadata(item) for key, item in value.items()
+        })
+    if isinstance(value, (list, tuple)):
+        return tuple(_freeze_result_metadata(item) for item in value)
+    if isinstance(value, (set, frozenset)):
+        return frozenset(_freeze_result_metadata(item) for item in value)
+    return value
+
+
+@dataclass(frozen=True, slots=True)
+class NPlayerPreflopSolveResult:
+    """Detached result for an exact finite tree, without a convergence claim."""
+
+    config_version: int
+    game_version: str
+    algorithm: str
+    iterations: int
+    max_nodes: int
+    max_depth: int
+    strategy: Mapping[Hashable, Mapping[Action, float]]
+    expected_values: tuple[float, ...]
+    certificate: UnilateralDeviationCertificate | None
+    metadata: Mapping[str, object]
+    provenance: str
+    approximate: bool
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "strategy", MappingProxyType({
+            key: MappingProxyType(dict(policy))
+            for key, policy in self.strategy.items()
+        }))
+        object.__setattr__(self, "metadata", _freeze_result_metadata(self.metadata))
+
+
+def solve_nplayer_preflop(
+    config: NPlayerPreflopConfig,
+    *,
+    algorithm: str,
+    iterations: int,
+    include_deviation_certificate: bool = False,
+    max_pure_strategies: int = 100_000,
+) -> NPlayerPreflopSolveResult:
+    """Solve the declared finite preflop tree with deterministic vanilla CFR."""
+    if not isinstance(config, NPlayerPreflopConfig):
+        raise TypeError("config must be an NPlayerPreflopConfig")
+    if not isinstance(algorithm, str) or algorithm != "vanilla-cfr":
+        raise ValueError("algorithm must be vanilla-cfr")
+    _positive(iterations, "iterations")
+    if not isinstance(include_deviation_certificate, bool):
+        raise ValueError("include_deviation_certificate must be boolean")
+    _positive(max_pure_strategies, "max_pure_strategies")
+
+    root = create_nplayer_preflop_root(config)
+    max_depth = 2 + config.num_players + config.max_raises * (config.num_players - 1)
+    solver = NPlayerCFRSolver(root, max_nodes=config.max_nodes, max_depth=max_depth)
+    trained = solver.train(iterations)
+    strategy = {
+        key: {action: float(probability) for action, probability in policy.items()}
+        for key, policy in trained.items()
+    }
+    expected_values = expected_values_nplayer(root, strategy)
+    certificate = (
+        unilateral_deviation_certificate(
+            root, strategy, max_pure_strategies=max_pure_strategies,
+        )
+        if include_deviation_certificate
+        else None
+    )
+    return NPlayerPreflopSolveResult(
+        config_version=4,
+        game_version=config.version,
+        algorithm=algorithm,
+        iterations=iterations,
+        max_nodes=config.max_nodes,
+        max_depth=max_depth,
+        strategy=strategy,
+        expected_values=expected_values,
+        certificate=certificate,
+        metadata={
+            "converged": False,
+            "convergence_claim": "none",
+            "deterministic": True,
+            "deviation_certificate": (
+                "exhaustive-diagnostic-only"
+                if include_deviation_certificate
+                else "not-requested"
+            ),
+        },
+        provenance="full-tree deterministic vanilla CFR; no convergence guarantee",
+        approximate=False,
     )

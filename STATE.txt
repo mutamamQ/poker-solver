@@ -1,4 +1,4 @@
-updated=2026-09-16T07:58:36Z
-wave=S3-I1 accepted-wave commit
-waiting_on=nothing; six final non-author slots PASS and candidate accepted
-next_action=commit accepted S3-I1, verify commit/tag/worktree, then dispatch S3-I2 exclusive RED owners
+updated=2026-09-16T09:30:13Z
+wave=S3-I2 core accepted checkpoint
+waiting_on=scoped accepted-wave commit for core plus authenticated integration RED
+next_action=stage only S3-I2 source/tests/examples/evidence and mission ledgers, verify staged scope, commit, then dispatch integration owner
