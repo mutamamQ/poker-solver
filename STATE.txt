@@ -1,4 +1,4 @@
-updated=2026-09-16T09:30:13Z
-wave=S3-I2 core accepted checkpoint
-waiting_on=scoped accepted-wave commit for core plus authenticated integration RED
-next_action=stage only S3-I2 source/tests/examples/evidence and mission ledgers, verify staged scope, commit, then dispatch integration owner
+updated=2026-09-16T10:37:05Z
+wave=S3-I2 integration accepted pending commit
+waiting_on=none; six audit slots authenticated and no live ownership
+next_action=stage exact S3-I2 integration production/evidence/state files, verify staged diff, commit accepted wave, then begin S4 architecture gate

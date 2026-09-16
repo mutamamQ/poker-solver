@@ -281,6 +281,215 @@ def _dispatch_nplayer_postflop(payload_value: Any) -> dict[str, Any]:
     }
 
 
+def _dispatch_nplayer_preflop(payload_value: Any) -> dict[str, Any]:
+    """Parse strict JSON containers, then use the bounded typed S3 solver."""
+    from fractions import Fraction
+
+    from .game_structure import ForcedPost
+    from .model import Action
+    from .nplayer_preflop import (
+        NPlayerPreflopConfig,
+        NPlayerPreflopContinuation,
+        NPlayerPreflopPublicAction,
+        NPlayerPreflopSizingRule,
+        solve_nplayer_preflop,
+    )
+    from .preflop import WeightedCombo
+
+    payload = _object(payload_value, {
+        "version", "num_players", "button", "starting_stacks", "forced_posts",
+        "straddle_variant", "ranges", "sizing_rules", "max_raises", "max_deals",
+        "max_nodes", "short_all_in_reopens", "continuation", "algorithm",
+        "iterations", "seed", "include_deviation_certificate", "max_pure_strategies",
+    }, "payload")
+    game_version = _str(payload["version"], "payload.version", allowed={"nplayer-preflop-v1"})
+    n = _int(payload["num_players"], "num_players", positive=True)
+    if not 2 <= n <= 9:
+        raise ValueError("num_players must be from 2 to 9")
+
+    def seat_list(value: Any, label: str) -> list[Any]:
+        items = _list(value, label)
+        if len(items) != n:
+            raise ValueError(f"{label} length must equal num_players")
+        return items
+
+    def cards(value: Any, label: str) -> tuple[int, int]:
+        items = _list(value, label)
+        if len(items) != 2:
+            raise ValueError(f"{label} must contain exactly two cards")
+        pair = tuple(_int(card, label, nonnegative=True) for card in items)
+        if pair[0] == pair[1] or any(card > 51 for card in pair):
+            raise ValueError(f"{label} must contain distinct cards in 0..51")
+        return cast(tuple[int, int], pair)
+
+    def boolean(name: str) -> bool:
+        value = payload[name]
+        if not isinstance(value, bool):
+            raise ValueError(f"{name} must be boolean")
+        return value
+
+    posts = []
+    for raw in _list(payload["forced_posts"], "forced_posts"):
+        post = _object(raw, {"seat", "kind", "amount"}, "forced post")
+        posts.append(ForcedPost(
+            seat=_int(post["seat"], "forced post seat", nonnegative=True),
+            kind=_str(post["kind"], "forced post kind",
+                      allowed={"ante", "small-blind", "big-blind", "straddle"}),
+            amount=_int(post["amount"], "forced post amount", positive=True),
+        ))
+    ranges = []
+    for seat, raw in enumerate(seat_list(payload["ranges"], "ranges")):
+        combos = []
+        for item in _list(raw, f"ranges[{seat}]"):
+            combo = _object(item, {"cards", "weight"}, "range combo")
+            weight = _float(combo["weight"], "range weight")
+            if weight <= 0:
+                raise ValueError("range weight must be positive")
+            combos.append(WeightedCombo(cards(combo["cards"], "range cards"), weight))
+        ranges.append(tuple(combos))
+
+    rules = []
+    for raw in _list(payload["sizing_rules"], "sizing_rules"):
+        rule = _object(raw, {
+            "position", "raise_count", "cold_callers", "relation", "expressions",
+        }, "sizing rule")
+        expressions = []
+        for raw_expression in _list(rule["expressions"], "sizing rule expressions"):
+            expression = _object_with_optional(
+                raw_expression, {"unit"}, {"value", "streets", "scale"}, "sizing expression",
+            )
+            unit = _str(expression["unit"], "sizing expression unit", allowed={
+                "all-in", "geometric", "pot-percent", "previous-bet-multiple", "big-blinds",
+            })
+            fields = ({"unit"} if unit == "all-in" else
+                      {"unit", "streets", "scale"} if unit == "geometric" else
+                      {"unit", "value"})
+            expression = dict(_object(expression, fields, "sizing expression"))
+            for field in fields - {"unit"}:
+                if field == "streets":
+                    _int(expression[field], "sizing expression streets", positive=True)
+                else:
+                    _float(expression[field], f"sizing expression {field}")
+            expressions.append(expression)
+        rules.append(NPlayerPreflopSizingRule(
+            position=_str(rule["position"], "sizing rule position"),
+            raise_count=_int(rule["raise_count"], "sizing rule raise_count", nonnegative=True),
+            cold_callers=_int(rule["cold_callers"], "sizing rule cold_callers", nonnegative=True),
+            relation=_str(rule["relation"], "sizing rule relation", allowed={"NA", "IP", "OOP"}),
+            expressions=tuple(expressions),
+        ))
+
+    continuation = _object_with_optional(payload["continuation"],
+        {"kind", "provenance", "source", "entries"}, {"odd_chip_order"}, "continuation")
+    kind = _str(continuation["kind"], "continuation kind",
+                allowed={"terminal-table", "showdown-ranks"})
+    _object(continuation, {"kind", "provenance", "source", "entries"} |
+            ({"odd_chip_order"} if kind == "showdown-ranks" else set()), "continuation")
+    payoff_table = {}
+    showdown_ranks = {}
+    for raw in _list(continuation["entries"], "continuation entries"):
+        entry = _object(raw, {"deal", "history", "values"} if kind == "terminal-table"
+                        else {"deal", "ranks"}, "continuation entry")
+        deal = tuple(cards(combo, "deal combo") for combo in seat_list(entry["deal"], "deal"))
+        if len({card for combo in deal for card in combo}) != 2 * n:
+            raise ValueError("deal cards must be disjoint")
+        if kind == "terminal-table":
+            history = []
+            for raw_action in _list(entry["history"], "history"):
+                action = _object(raw_action, {"actor", "kind", "amount"}, "history action")
+                actor = _int(action["actor"], "history actor", nonnegative=True)
+                action_kind = _str(action["kind"], "history kind",
+                                   allowed={"FOLD", "CHECK", "CALL", "RAISE"})
+                amount = _int(action["amount"], "history amount", nonnegative=True)
+                if actor >= n or (action_kind in {"FOLD", "CHECK"} and amount != 0):
+                    raise ValueError("invalid history actor or amount")
+                if action_kind in {"CALL", "RAISE"} and amount == 0:
+                    raise ValueError("history call/raise amount must be positive")
+                history.append(NPlayerPreflopPublicAction(actor, Action(action_kind, amount)))
+            key = (deal, tuple(history))
+            if key in payoff_table:
+                raise ValueError("duplicate terminal-table key")
+            values = seat_list(entry["values"], "terminal values")
+            for value in values:
+                _float(value, "terminal value")
+            payoff_table[key] = tuple(Fraction(value) for value in values)
+        else:
+            if deal in showdown_ranks:
+                raise ValueError("duplicate showdown deal")
+            showdown_ranks[deal] = tuple(
+                _int(rank, "showdown rank") for rank in seat_list(entry["ranks"], "ranks")
+            )
+    odd_chip_order = tuple(
+        _int(seat, "odd_chip_order", nonnegative=True)
+        for seat in seat_list(continuation["odd_chip_order"], "odd_chip_order")
+    ) if kind == "showdown-ranks" else ()
+    typed_continuation = NPlayerPreflopContinuation(
+        kind=kind,
+        provenance=_str(continuation["provenance"], "continuation provenance"),
+        source=_str(continuation["source"], "continuation source", allowed={"supplied", "derived"}),
+        payoff_table=payoff_table, showdown_ranks=showdown_ranks, odd_chip_order=odd_chip_order,
+    )
+    algorithm = _str(payload["algorithm"], "algorithm", allowed={"vanilla-cfr"})
+    if payload["seed"] is not None:
+        raise ValueError("vanilla-cfr requires seed null")
+    iterations = _int(payload["iterations"], "iterations", positive=True)
+    include_certificate = boolean("include_deviation_certificate")
+    max_pure_strategies = _int(payload["max_pure_strategies"], "max_pure_strategies", positive=True)
+    config = NPlayerPreflopConfig(
+        version=game_version, num_players=n,
+        button=_int(payload["button"], "button", nonnegative=True),
+        starting_stacks=tuple(_int(value, "starting_stacks", positive=True)
+                              for value in seat_list(payload["starting_stacks"], "starting_stacks")),
+        forced_posts=tuple(posts),
+        straddle_variant=_str(payload["straddle_variant"], "straddle_variant",
+                              allowed={"none", "standard", "double", "mississippi"}),
+        ranges=tuple(ranges), sizing_rules=tuple(rules),
+        max_raises=_int(payload["max_raises"], "max_raises", positive=True),
+        max_deals=_int(payload["max_deals"], "max_deals", positive=True),
+        max_nodes=_int(payload["max_nodes"], "max_nodes", positive=True),
+        short_all_in_reopens=boolean("short_all_in_reopens"), continuation=typed_continuation,
+    )
+    result = solve_nplayer_preflop(
+        config, algorithm=algorithm, iterations=iterations,
+        include_deviation_certificate=include_certificate, max_pure_strategies=max_pure_strategies,
+    )
+
+    def json_copy(value: Any) -> Any:
+        if isinstance(value, Mapping):
+            return {str(key): json_copy(item) for key, item in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [json_copy(item) for item in value]
+        if isinstance(value, float):
+            return _float(value, "result value")
+        if value is None or isinstance(value, (str, bool, int)):
+            return value
+        raise ValueError("unsupported result JSON value")
+
+    certificate = None
+    if result.certificate is not None:
+        diagnostic = result.certificate
+        certificate = {
+            "values": [_float(value, "certificate value") for value in diagnostic.values],
+            "best_response_values": [_float(value, "best response value")
+                                     for value in diagnostic.best_response_values],
+            "incentives": [_float(value, "incentive") for value in diagnostic.incentives],
+            "total_incentive": _float(diagnostic.total_incentive, "total incentive"),
+            "provenance": diagnostic.provenance,
+        }
+    return {
+        "version": 4, "operation": "solve-nplayer-preflop",
+        "config_version": result.config_version, "game_version": result.game_version,
+        "algorithm": result.algorithm, "iterations": result.iterations, "seed": None,
+        "max_nodes": result.max_nodes, "max_depth": result.max_depth,
+        "strategy": {str(key): {str(action): _float(probability, "strategy probability")
+                                 for action, probability in policy.items()}
+                     for key, policy in result.strategy.items()},
+        "values": [_float(value, "expected value") for value in result.expected_values],
+        "certificate": certificate, "metadata": json_copy(result.metadata),
+        "provenance": result.provenance, "approximate": result.approximate,
+    }
+
+
 def dispatch_v4(data: dict[str, Any]) -> dict[str, Any]:
     """Strict version-4 dispatcher for S1 automatic all-street postflop.
     
@@ -327,8 +536,10 @@ def dispatch_v4(data: dict[str, Any]) -> dict[str, Any]:
     operation = _str(
         request["operation"],
         "operation",
-        allowed={"solve-allstreet-postflop", "solve-nplayer-postflop"},
+        allowed={"solve-allstreet-postflop", "solve-nplayer-postflop", "solve-nplayer-preflop"},
     )
+    if operation == "solve-nplayer-preflop":
+        return _dispatch_nplayer_preflop(request["payload"])
     if operation == "solve-nplayer-postflop":
         return _dispatch_nplayer_postflop(request["payload"])
     payload = _object_with_optional(
