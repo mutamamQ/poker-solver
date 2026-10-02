@@ -1,4 +1,4 @@
-updated=2026-09-16T10:37:05Z
-wave=S3-I2 integration accepted pending commit
-waiting_on=none; six audit slots authenticated and no live ownership
-next_action=stage exact S3-I2 integration production/evidence/state files, verify staged diff, commit accepted wave, then begin S4 architecture gate
+updated=2026-09-16T12:58:08Z
+wave=S4 repaired architecture R2 rejected; R3 repair pending
+waiting_on=deleg_93e6d88b R2A3R finalization against invalidated old hash
+next_action=After R2A3R ownership ends, patch four reproduced API/design defects, freeze R3 manifest, run unchanged gates, and dispatch a wholly fresh exact-six BryantGPT design audit
