@@ -1,4 +1,4 @@
-updated=2026-09-16T12:58:08Z
-wave=S4 repaired architecture R2 rejected; R3 repair pending
-waiting_on=deleg_93e6d88b R2A3R finalization against invalidated old hash
-next_action=After R2A3R ownership ends, patch four reproduced API/design defects, freeze R3 manifest, run unchanged gates, and dispatch a wholly fresh exact-six BryantGPT design audit
+updated=2026-10-02T16:55:53Z
+wave=Practice design wave (dispatching)
+waiting_on=design commit then 6 bryant design subagents
+next_action=Dispatch six-topic design wave writing research/practice-mode/design/01..06, then reconcile into PRACTICE_MODE_DESIGN.md
