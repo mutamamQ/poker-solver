@@ -1,4 +1,4 @@
-updated=2026-10-02T16:55:53Z
-wave=Practice design wave (dispatching)
-waiting_on=design commit then 6 bryant design subagents
-next_action=Dispatch six-topic design wave writing research/practice-mode/design/01..06, then reconcile into PRACTICE_MODE_DESIGN.md
+updated=2026-10-02T21:19:49Z
+wave=Practice design wave retries (02 adapter, 06 solver-eval)
+waiting_on=2 bryant retries: 02 OPENAI_GPT6_1_SOL, 06 CLAUDE_V5_5_OPUS
+next_action=On completion inspect 02/06, reconcile 01-06 into PRACTICE_MODE_DESIGN.md, commit design wave, dispatch impl wave 1 (6 owners)
