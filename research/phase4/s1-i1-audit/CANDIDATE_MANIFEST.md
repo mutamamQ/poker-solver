@@ -1,0 +1,14 @@
+# Phase 4 S1-I1 failed-candidate audit manifest
+
+Frozen: 2026-09-15T15:53:19Z
+Base commit: 7a817e618a3c0898b531e88440b490323c62b49b
+Status: unaccepted candidate; focused gate 52 failed, 65 passed.
+
+2d93dc2983fb4ec9bc499b2d025a109c34ae8437301c748d0be708a4e6b4f4d7  src/poker_solver/allstreet.py
+9fecb70bdd22d837bf0b1470ec4f8991fde0b10fb80ca5246d0afe8554b23e25  src/poker_solver/api_v4.py
+52590d6bbadde602b6698ca7f5204851ed99b113dfee26e738cd85af67122afc  src/poker_solver/bounded_tree.py
+00b95824979bb894321dbb491746b9a97bf891b4682b6f1a5e58b70ab3fabebc  src/poker_solver/multistreet.py
+1125002dc8c6ea4c13832654adce8a736be66293dc9e199a0dc2a56918cf6fa9  tests/test_allstreet_config.py
+22b3af76e41af2805bd0b8133a2cf25e3c3e15fe77fcd1c7562ca45be1b426e6  tests/test_allstreet_state.py
+6329c7f25893cf75582d8f8fd020e88d48520cc0ee8738fe432c1c0370d5b21d  tests/test_api_v4.py
+e9ee79e85cf23499df6509e185f1345eacc22c1a54ecea593af10a7278cc85ea  tests/test_bounded_tree.py

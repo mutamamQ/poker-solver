@@ -141,12 +141,22 @@ def _regret_matching(data: NPlayerInfoData) -> dict[Action, float]:
 class NPlayerCFRSolver:
     """Synchronous vanilla CFR over a validated finite N-player tree."""
 
-    def __init__(self, root: NPlayerGameState) -> None:
+    def __init__(
+        self,
+        root: NPlayerGameState,
+        *,
+        max_nodes: int = 100_000,
+        max_depth: int = 512,
+    ) -> None:
         self.root = root
         self.num_players = _player_count(root)
         self.infosets = {
             key: NPlayerInfoData(player, actions)
-            for key, (player, actions) in collect_nplayer_infosets(root).items()
+            for key, (player, actions) in collect_nplayer_infosets(
+                root,
+                max_nodes=max_nodes,
+                max_depth=max_depth,
+            ).items()
         }
         self.iterations = 0
 

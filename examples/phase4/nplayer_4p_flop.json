@@ -1,0 +1,33 @@
+{
+  "version": 4,
+  "operation": "solve-nplayer-postflop",
+  "payload": {
+    "version": "nplayer-postflop-v1",
+    "num_players": 4,
+    "button": 0,
+    "starting_stacks": [20, 20, 20, 20],
+    "contributions": [2, 2, 2, 2],
+    "folded": [false, false, true, true],
+    "board": [0, 1, 2],
+    "ranges": [
+      [{"cards": [3, 4], "weight": 1.0}],
+      [{"cards": [5, 6], "weight": 1.0}],
+      [{"cards": [7, 8], "weight": 1.0}],
+      [{"cards": [9, 10], "weight": 1.0}]
+    ],
+    "wager_targets": [4],
+    "max_raises": 1,
+    "max_deals": 1,
+    "max_nodes": 2000,
+    "odd_chip_order": [0, 1, 2, 3],
+    "showdowns": [
+      {"deal": [[3, 4], [5, 6], [7, 8], [9, 10]], "ranks": [4, 3, 2, 1]}
+    ],
+    "rake_policy": null,
+    "algorithm": "vanilla-cfr",
+    "iterations": 2,
+    "seed": null,
+    "include_deviation_certificate": false,
+    "max_pure_strategies": 100000
+  }
+}

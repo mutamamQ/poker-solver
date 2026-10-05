@@ -29,6 +29,7 @@ class MultiStreetConfig:
     allowed_runouts: tuple[tuple[int, ...], ...]
     betting_mode: BettingMode
     wager_targets: tuple[int, ...]
+    river_betting: bool = False
 
     def __post_init__(self) -> None:
         if self.version != "multistreet-v1":
@@ -83,6 +84,8 @@ class MultiStreetConfig:
                 raise ValueError(f"runouts must contain exactly {needed_runout_cards} cards")
             if board_set.intersection(validated):
                 raise ValueError("runout overlaps with starting board")
+        if not isinstance(self.river_betting, bool):
+            raise ValueError("river_betting must be a boolean")
         for target in self.wager_targets:
             if (
                 not isinstance(target, int)
@@ -241,7 +244,9 @@ class MultiStreetState:
                 new_street = street_map[len(new_board)]
                 if len(new_board) > 5:
                     raise ValueError("runout produces more than five board cards")
-                if len(new_board) == 5:
+                if len(new_board) == 5 and (
+                    any(r == 0 for r in self.remaining) or not self.config.river_betting
+                ):
                     h0 = evaluate_seven(self.private_deal[0] + new_board)
                     h1 = evaluate_seven(self.private_deal[1] + new_board)
                     contested = self.pot + sum(self.committed)

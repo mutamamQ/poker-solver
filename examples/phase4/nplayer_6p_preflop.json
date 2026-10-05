@@ -1,0 +1,48 @@
+{
+  "version": 4,
+  "operation": "solve-nplayer-preflop",
+  "payload": {
+    "version": "nplayer-preflop-v1",
+    "num_players": 6,
+    "button": 0,
+    "starting_stacks": [1, 4, 4, 1, 1, 1],
+    "forced_posts": [
+      {"seat": 0, "kind": "ante", "amount": 1},
+      {"seat": 1, "kind": "ante", "amount": 1},
+      {"seat": 2, "kind": "ante", "amount": 1},
+      {"seat": 3, "kind": "ante", "amount": 1},
+      {"seat": 4, "kind": "ante", "amount": 1},
+      {"seat": 5, "kind": "ante", "amount": 1},
+      {"seat": 1, "kind": "small-blind", "amount": 1},
+      {"seat": 2, "kind": "big-blind", "amount": 2}
+    ],
+    "straddle_variant": "none",
+    "ranges": [
+      [{"cards": [0, 1], "weight": 1.0}],
+      [{"cards": [2, 3], "weight": 1.0}],
+      [{"cards": [4, 5], "weight": 1.0}],
+      [{"cards": [6, 7], "weight": 1.0}],
+      [{"cards": [8, 9], "weight": 1.0}],
+      [{"cards": [10, 11], "weight": 1.0}]
+    ],
+    "sizing_rules": [],
+    "max_raises": 1,
+    "max_deals": 1,
+    "max_nodes": 100,
+    "short_all_in_reopens": false,
+    "continuation": {
+      "kind": "showdown-ranks",
+      "provenance": "synthetic bounded 6-player example ranks",
+      "source": "supplied",
+      "entries": [
+        {"deal": [[0, 1], [2, 3], [4, 5], [6, 7], [8, 9], [10, 11]], "ranks": [6, 5, 4, 3, 2, 1]}
+      ],
+      "odd_chip_order": [0, 1, 2, 3, 4, 5]
+    },
+    "algorithm": "vanilla-cfr",
+    "iterations": 2,
+    "seed": null,
+    "include_deviation_certificate": false,
+    "max_pure_strategies": 100000
+  }
+}

@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Practice — Poker Solver</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div id="practice-app" class="app-shell" role="application" aria-label="Poker practice mode">
+    <header class="topbar">
+      <h1 class="app-title">Practice</h1>
+      <label class="topbar-field" for="spot-filter">Family
+        <select id="spot-filter" aria-label="Filter spots by family">
+          <option value="">All families</option>
+        </select>
+      </label>
+      <label class="topbar-field" for="iterations-input">Iterations
+        <input id="iterations-input" type="number" min="1" step="1" inputmode="numeric"
+               placeholder="spot default" aria-label="Solver iterations override (empty = spot default)">
+      </label>
+      <button id="resolve-btn" type="button" disabled>Re-solve</button>
+      <span class="kbd-hint" aria-hidden="true">F fold · C check/call · B bet/raise · Enter submit</span>
+    </header>
+
+    <aside class="sidebar panel" aria-label="Spots">
+      <h2 class="panel-title">Spots</h2>
+      <div id="spot-status" class="loading" role="status" aria-live="polite">Loading spots…</div>
+      <ul id="spot-list" aria-label="Practice spots"></ul>
+    </aside>
+
+    <main class="main">
+      <div id="error-message" class="error hidden" role="alert" aria-live="assertive"></div>
+
+      <section id="spot-details" class="panel" aria-label="Selected spot" aria-live="polite">
+        <div class="spot-header">
+          <h2 class="panel-title" id="spot-title">Select a spot</h2>
+          <span id="spot-meta" class="spot-meta"></span>
+          <span id="solve-spinner" class="spinner hidden" role="status" aria-label="Solving"></span>
+        </div>
+
+        <div class="table-felt" aria-label="Poker table">
+          <div class="seat villain" id="seat-villain">
+            <div class="seat-name" id="villain-name">Villain</div>
+            <div class="seat-cards"><span class="card back" aria-hidden="true"></span><span class="card back" aria-hidden="true"></span></div>
+          </div>
+
+          <div class="board-area">
+            <div id="board-cards" class="board" aria-label="Board cards"></div>
+            <div class="pot-chip" aria-label="Pot">
+              <span class="pot-label">Pot</span>
+              <span id="pot-value">—</span>
+            </div>
+          </div>
+
+          <div class="seat hero" id="seat-hero">
+            <div class="seat-name" id="hero-name">Hero</div>
+            <div id="hero-hand" class="seat-cards" aria-label="Hero hand"></div>
+          </div>
+
+          <ul id="stacks-list" class="stacks" aria-label="Seat stacks"></ul>
+        </div>
+
+        <div class="history-row">
+          <span class="history-label">Action</span>
+          <div id="action-history" aria-label="Action history"></div>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="Your decision">
+        <h2 class="panel-title">Your decision</h2>
+        <div id="action-controls" role="group" aria-label="Legal actions"></div>
+        <div id="size-row" class="size-row hidden">
+          <label for="action-size">Size</label>
+          <input id="action-size" type="number" min="0" step="any" aria-label="Bet or raise size in chips">
+          <div id="size-presets" class="size-presets" aria-label="Size presets"></div>
+        </div>
+        <div class="submit-row">
+          <button id="submit-play" type="button" disabled>Submit</button>
+          <button id="next-spot" type="button" disabled>Next spot</button>
+        </div>
+      </section>
+
+      <section id="result-panel" class="panel hidden" aria-label="Result" aria-live="polite">
+        <h2 class="panel-title">Result</h2>
+        <div class="result-summary">
+          <div id="score-value" class="score-ring" aria-label="Score"></div>
+          <div class="result-stats">
+            <div class="stat"><span class="stat-label">Grade</span><span id="grade-value" class="grade-badge"></span></div>
+            <div class="stat"><span class="stat-label">EV loss</span><span id="ev-loss-value"></span></div>
+          </div>
+        </div>
+        <p id="feedback-text"></p>
+
+        <h3 class="panel-title">Solver mix</h3>
+        <div id="optimal-mix"></div>
+
+        <h3 class="panel-title">Action values (Q)</h3>
+        <div id="action-values"></div>
+
+        <h3 class="panel-title">Range strategy</h3>
+        <div id="range-strategy"></div>
+
+        <h3 class="panel-title">Provenance</h3>
+        <div id="provenance"></div>
+      </section>
+    </main>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>

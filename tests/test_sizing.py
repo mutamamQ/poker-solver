@@ -4,8 +4,9 @@ Phase 3 Wave C1: strict sizing with Decimal conversion, legality filtering,
 Fixed/Dynamic/Automatic modes, and independent exhaustive subset oracle.
 """
 
-import pytest
 from decimal import Decimal
+
+import pytest
 
 
 class TestSizeExpressionValidation:
@@ -34,6 +35,12 @@ class TestSizeExpressionValidation:
         
         with pytest.raises(ValueError, match="finite"):
             validate_size_expression({"unit": "pot-percent", "value": float('inf')})
+
+        with pytest.raises(ValueError, match="finite"):
+            validate_size_expression({"unit": "pot-percent", "value": Decimal("NaN")})
+
+        with pytest.raises(ValueError, match="finite"):
+            validate_size_expression({"unit": "pot-percent", "value": Decimal("Infinity")})
     
     def test_geometric_requires_streets_and_scale(self):
         """Geometric expression must have streets and scale."""

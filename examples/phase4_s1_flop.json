@@ -1,0 +1,27 @@
+{
+  "version": 4,
+  "operation": "solve-allstreet-postflop",
+  "payload": {
+    "version": "allstreet-postflop-v1",
+    "starting_board": [0, 1, 2],
+    "initial_dead_pot": 100,
+    "effective_stack": 500,
+    "player0_combos": [
+      {"cards": [3, 4], "weight": 1.0}
+    ],
+    "player1_combos": [
+      {"cards": [5, 6], "weight": 1.0}
+    ],
+    "allowed_runouts": [
+      [7, 8],
+      [7, 9]
+    ],
+    "betting_mode": "no-limit",
+    "wager_targets": [50, 100],
+    "algorithm": "vanilla-cfr",
+    "iterations": 10,
+    "seed": null,
+    "max_nodes": 5000,
+    "max_depth": 64
+  }
+}

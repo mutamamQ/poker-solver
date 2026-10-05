@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<!-- STYLE PREVIEW ONLY. Fake demo markup for visual checking of web/style.css.
+     Never served by the server; all values below are placeholders, not solver output. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>style.css preview (demo only)</title>
+<link rel="stylesheet" href="../../../web/style.css">
+</head>
+<body>
+<div id="practice-app">
+  <header class="topbar">
+    <h1>Practice Mode — style preview</h1>
+    <span class="spinner" aria-label="loading"></span>
+    <span id="spot-status">demo status text</span>
+  </header>
+
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="panel-title">Spots</div>
+      <select id="spot-filter"><option>All families</option></select>
+      <ul id="spot-list">
+        <li><button class="spot-item active"><span class="spot-family"><span class="family-badge" data-family="kuhn-demo">kuhn</span></span><span class="spot-label">Demo spot A</span></button></li>
+        <li><button class="spot-item"><span class="spot-family"><span class="family-badge" data-family="river-oop-demo">river-oop</span></span><span class="spot-label">Demo spot B</span></button></li>
+        <li><button class="spot-item"><span class="spot-family"><span class="family-badge" data-family="river-ip-demo">river-ip</span></span><span class="spot-label">Demo spot C</span></button></li>
+        <li><button class="spot-item"><span class="spot-family"><span class="family-badge" data-family="other">other</span></span><span class="spot-label">Fallback family badge with a long label that wraps</span></button></li>
+      </ul>
+      <label for="iterations-input">Iterations</label>
+      <input id="iterations-input" type="number" placeholder="default">
+      <button id="resolve-btn">Re-solve</button>
+    </aside>
+
+    <main class="main">
+      <div id="error-message" class="error">Demo error banner text.</div>
+
+      <section class="panel">
+        <div class="panel-title">Table <span id="spot-details">demo details</span></div>
+        <div class="table-felt">
+          <div class="seat villain"><strong>Villain</strong><span class="seat-stack">90</span></div>
+          <div class="pot-chip">Pot <span id="pot-value">10</span></div>
+          <div class="board" id="board-cards">
+            <span class="card suit-s"><span class="rank">A</span><span class="suit">♠</span></span>
+            <span class="card suit-h"><span class="rank">K</span><span class="suit">♥</span></span>
+            <span class="card suit-d"><span class="rank">T</span><span class="suit">♦</span></span>
+            <span class="card suit-c"><span class="rank">7</span><span class="suit">♣</span></span>
+            <span class="card back"><span class="rank">?</span><span class="suit">?</span></span>
+          </div>
+          <div class="seat hero"><strong>Hero</strong><span class="seat-stack">90</span></div>
+        </div>
+        <div style="height:28px"></div>
+        <div class="panel-title">Hero hand</div>
+        <div id="hero-hand">
+          <span class="card suit-h"><span class="rank">Q</span><span class="suit">♥</span></span>
+          <span class="card suit-c"><span class="rank">Q</span><span class="suit">♣</span></span>
+          <span class="card kuhn"><span class="rank">K</span></span>
+        </div>
+        <div class="panel-title" style="margin-top:12px">Stacks</div>
+        <ul id="stacks-list"><li>Seat 0: 90</li><li>Seat 1: 90</li></ul>
+        <div class="panel-title" style="margin-top:12px">History</div>
+        <ol id="action-history">
+          <li class="history-step act-check">check</li>
+          <li class="history-step act-bet">bet 5</li>
+          <li class="history-step act-raise">raise 15</li>
+          <li class="history-step act-call">call</li>
+        </ol>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title">Your action</div>
+        <div id="action-controls">
+          <button class="action-btn act-fold">fold</button>
+          <button class="action-btn act-check">check</button>
+          <button class="action-btn act-call selected">call</button>
+          <button class="action-btn act-bet">bet <span class="amt">5</span></button>
+          <button class="action-btn act-raise" disabled>raise</button>
+        </div>
+        <div class="size-row">
+          <label for="action-size">Size</label>
+          <input id="action-size" type="number" value="5">
+          <button class="size-preset">33%</button>
+          <button class="size-preset selected">75%</button>
+          <button class="size-preset">150%</button>
+          <button id="submit-play">Submit</button>
+        </div>
+      </section>
+
+      <section class="panel" id="result-panel">
+        <div class="panel-title">Result</div>
+        <div class="result-head">
+          <div class="score-ring grade-good" style="--score: 72"><span id="score-value">72</span></div>
+          <span id="grade-value" class="grade-badge grade-good">good</span>
+          <span>EV loss: <span id="ev-loss-value">0.4</span></span>
+        </div>
+        <div>
+          <span class="grade-badge grade-perfect">perfect</span>
+          <span class="grade-badge grade-good">good</span>
+          <span class="grade-badge grade-inaccuracy">inaccuracy</span>
+          <span class="grade-badge grade-mistake">mistake</span>
+          <span class="grade-badge grade-blunder">blunder</span>
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <div class="score-ring grade-perfect" style="--score: 100"><span class="score-num">100</span></div>
+          <div class="score-ring grade-mistake" style="--score: 35"><span class="score-num">35</span></div>
+          <div class="score-ring grade-blunder" style="--score: 5"><span class="score-num">5</span></div>
+        </div>
+        <p id="feedback-text">Demo feedback sentence.</p>
+        <div class="panel-title">Solver mix</div>
+        <div id="optimal-mix">
+          <div class="mix-bar">
+            <div class="mix-seg act-fold" style="width: 20%">fold 20%</div>
+            <div class="mix-seg act-call" style="width: 45%">call 45%</div>
+            <div class="mix-seg act-raise tiny" style="width: 3%">raise 3%</div>
+            <div class="mix-seg act-bet" style="width: 32%">bet 32%</div>
+          </div>
+          <ul class="mix-legend">
+            <li class="act-fold">fold 20%</li><li class="act-call">call 45%</li>
+            <li class="act-raise">raise 3%</li><li class="act-bet">bet 32%</li>
+          </ul>
+        </div>
+        <div id="action-values"><table><thead><tr><th>Action</th><th>Q</th></tr></thead>
+          <tbody><tr><td>call</td><td>1.00</td></tr><tr><td>fold</td><td>0.00</td></tr></tbody></table></div>
+        <div class="panel-title">Range strategy</div>
+        <div id="range-strategy">
+          <table class="range-table">
+            <thead><tr><th>Hand</th><th>Mix</th></tr></thead>
+            <tbody>
+              <tr class="range-row"><td>AsAh</td><td class="range-cell"><div class="mix-bar"><div class="mix-seg act-bet" style="width:70%"></div><div class="mix-seg act-check" style="width:30%"></div></div></td></tr>
+              <tr class="range-row hero-hand-row"><td>QhQc</td><td class="range-cell"><div class="mix-bar"><div class="mix-seg act-check" style="width:100%"></div></div></td></tr>
+              <tr class="range-row"><td>7d6d</td><td class="range-cell"><div class="mix-bar"><div class="mix-seg act-fold" style="width:50%"></div><div class="mix-seg act-raise" style="width:50%"></div></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title">Provenance</div>
+        <dl class="prov-grid" id="provenance">
+          <dt class="prov-key">backend</dt><dd class="prov-val">demo</dd>
+          <dt class="prov-key">params_hash</dt><dd class="prov-val mono">0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</dd>
+          <dt class="prov-key">iterations</dt><dd class="prov-val">100</dd>
+        </dl>
+      </section>
+
+      <section class="panel loading" style="min-height:80px">
+        <div class="panel-title">.loading state</div>
+      </section>
+      <div class="hidden">This must not be visible.</div>
+    </main>
+  </div>
+</div>
+</body>
+</html>
