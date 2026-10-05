@@ -313,9 +313,21 @@ class PracticeHandler(BaseHTTPRequestHandler):
     do_TRACE = do_PUT
     do_CONNECT = do_PUT
 
+    def parse_request(self) -> bool:  # noqa: D401
+        """Ignore leading empty lines before the request line (RFC 9112 section 2.2)."""
+        skipped = 0
+        while self.raw_requestline in (b"\r\n", b"\n") and skipped < 8:
+            self.raw_requestline = self.rfile.readline(65537)
+            skipped += 1
+        return super().parse_request()
+
     def send_error(self, code: int, message: str | None = None, explain: str | None = None) -> None:
         """JSON error bodies everywhere; unknown methods (stdlib 501) become 405."""
         self.close_connection = True
+        # Protocol errors raised before the version is parsed (garbage request line, 505)
+        # leave request_version at HTTP/0.9, which would suppress the status line + headers.
+        if getattr(self, "request_version", "HTTP/0.9") == "HTTP/0.9":
+            self.request_version = self.protocol_version
         if code == 501 and self.command:
             path = self._path() if getattr(self, "path", None) else ""
             extra = {"Allow": "POST" if path == API_PATH else "GET, HEAD"} if path in KNOWN_PATHS else None

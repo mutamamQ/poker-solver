@@ -746,3 +746,14 @@ R1: 1 MAJOR (stack test varied bet size too; stack alone inert on river). R2/R4:
 - R3-F1: Enter on a focused action button selects THAT action then submits (verified in browser: Check selected, Enter on Bet 33 -> submits bet[33]).
 - R3-F2: topbar not sticky <=900px.
 Regression tests now 15 in tests/test_practice_w3_regressions.py. Full suite 1022 passed.
+
+## W3 re-audit round 3 (2026-10-05T02:34:30Z)
+R1: CLEAN (mutation checks: stack/pot/range/iterations each caught). R2/R4: 4 MINOR/LOW, suite 1022. R3: 1 MINOR.
+Repaired (reproduced):
+- N1 protocol errors before version parse (garbage line, 505) now send status line + security headers (request_version forced to HTTP/1.1 in send_error).
+- N4 leading blank line before request line ignored (RFC 9112 2.2).
+- R3 F-C sidebar under wrapped topbar at 901-1100px: topbar static <=1100px; fixed 60px non-wrapping topbar above (verified 1000/1090/1101/1280/1600: no overlap, no clipping, no h-scroll).
+Accepted/not repaired (logged decisions):
+- N2 header trickle has only per-read 30 s timeout (stdlib limitation; loopback-only server; LOW).
+- N3 legacy solve-allstreet-postflop body shape is pre-existing and out of practice-mode scope (R2 applies to practice ops, which comply).
+Full suite 1025 passed (+3 regression tests).

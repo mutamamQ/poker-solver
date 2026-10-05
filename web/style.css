@@ -1075,3 +1075,5 @@ div.range-table .range-row { grid-template-columns: 96px minmax(120px, 1fr) minm
 }
 #spot-list .spot-item { flex-shrink: 0; }
 @media (max-width: 900px) { .topbar { position: static; } }
+@media (max-width: 1100px) { .topbar { position: static; } .sidebar { top: 0; max-height: 100vh; } }
+@media (min-width: 1101px) { :root { --topbar-h: 60px; } .topbar { box-sizing: border-box; height: var(--topbar-h); flex-wrap: nowrap; } }

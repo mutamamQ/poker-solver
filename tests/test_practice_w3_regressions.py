@@ -194,3 +194,19 @@ def test_nonalpha_method_is_405(live):
     r = conn.getresponse()
     assert r.status == 405 and r.getheader("Allow") == "GET, HEAD"
     assert "error" in json.loads(r.read())
+
+
+# --- reaudit-3 N1: protocol errors before version parse still get status line + headers
+@pytest.mark.parametrize("line", [b"hello\r\n\r\n", b"GET / HTTP/2.0\r\n\r\n"])
+def test_garbage_request_line_has_status_and_headers(live, line):
+    data = _raw(live, line, read_timeout=3.0)
+    assert data.startswith(b"HTTP/1.1 ")
+    head = data.split(b"\r\n\r\n", 1)[0].lower()
+    assert b"x-content-type-options: nosniff" in head
+    assert b"content-security-policy" in head
+
+
+# --- reaudit-3 N4: leading blank line before the request line is ignored
+def test_leading_blank_line_is_ignored(live):
+    data = _raw(live, b"\r\nGET /api/health HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n", read_timeout=3.0)
+    assert data.startswith(b"HTTP/1.1 200")
