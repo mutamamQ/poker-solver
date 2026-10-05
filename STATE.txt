@@ -1,4 +1,4 @@
-updated=2026-10-05T00:57:36Z
-wave=W2-frontend (dispatching)
-waiting_on=3 bryant-opus-55 subagents: (a) web/index.html+app.js (b) web/style.css (c) server/web integration + tests/test_practice_ui.py
-next_action=on return: integrate, full suite (>=990), commit W2, dispatch W3 audit
+updated=2026-10-05T01:16:14Z
+wave=W3-audit (dispatching)
+waiting_on=3 bryant-opus-55 non-author auditors vs research/practice-mode/w3-audit/CANDIDATE_MANIFEST.md
+next_action=repair reproduced findings, re-audit, commit, then FINISH (server on :7777, report, tag)

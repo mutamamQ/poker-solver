@@ -21,6 +21,8 @@ from urllib.parse import urlsplit
 __all__ = [
     "DEFAULT_WEB_DIR",
     "DEFAULT_TIMEOUT_S",
+    "CONTENT_SECURITY_POLICY",
+    "STATIC_SECURITY_HEADERS",
     "MAX_BODY_BYTES",
     "make_server",
     "serve",
@@ -42,7 +44,20 @@ STATIC_ROUTES: dict[str, tuple[str, str]] = {
 }
 API_PATH = "/api/v4"
 HEALTH_PATH = "/api/health"
-KNOWN_PATHS = frozenset(STATIC_ROUTES) | {API_PATH, HEALTH_PATH}
+FAVICON_PATH = "/favicon.ico"
+KNOWN_PATHS = frozenset(STATIC_ROUTES) | {API_PATH, HEALTH_PATH, FAVICON_PATH}
+
+# Strict same-origin CSP for the static UI: no inline scripts/styles, no third parties.
+CONTENT_SECURITY_POLICY = (
+    "default-src 'self'; style-src 'self'; script-src 'self'; "
+    "img-src 'self' data:; connect-src 'self'"
+)
+STATIC_SECURITY_HEADERS: dict[str, str] = {
+    "X-Content-Type-Options": "nosniff",
+    "Content-Security-Policy": CONTENT_SECURITY_POLICY,
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer",
+}
 
 DispatchFn = Callable[[dict[str, Any]], Any]
 
@@ -136,7 +151,8 @@ class PracticeHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("X-Content-Type-Options", "nosniff")
+        for k, v in STATIC_SECURITY_HEADERS.items():
+            self.send_header(k, v)
         if no_store:
             self.send_header("Cache-Control", "no-store")
         self.end_headers()
@@ -178,6 +194,14 @@ class PracticeHandler(BaseHTTPRequestHandler):
         path = self._path()
         if path == HEALTH_PATH:
             self._send_json(200, {"ok": True})
+            return
+        if path == FAVICON_PATH:
+            # No icon shipped; 204 keeps browsers from logging a 404 on every load.
+            self.send_response(204)
+            for k, v in STATIC_SECURITY_HEADERS.items():
+                self.send_header(k, v)
+            self.send_header("Cache-Control", "max-age=86400")
+            self.end_headers()
             return
         route = STATIC_ROUTES.get(path)
         if route is None:
