@@ -604,9 +604,14 @@
     var key = ev.key;
     if (key === "Enter") {
       if (ev.target && ev.target.id === "iterations-input") return;  // handled separately
-      if (!typing && ev.target && ev.target.tagName === "BUTTON" &&
-          !ev.target.classList.contains("action-btn") &&
-          !ev.target.classList.contains("size-preset")) return; // native activation
+      if (!typing && ev.target && ev.target.tagName === "BUTTON") {
+        var isPick = ev.target.classList.contains("action-btn") || ev.target.classList.contains("size-preset");
+        if (!isPick) return; // native activation (submit, re-solve, next)
+        ev.preventDefault();
+        if (!ev.target.disabled) ev.target.click(); // select the focused action first
+        if (!$("submit-play").disabled) submitPlay();
+        return;
+      }
       if (!$("submit-play").disabled) { ev.preventDefault(); submitPlay(); }
       return;
     }

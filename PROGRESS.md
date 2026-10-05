@@ -735,3 +735,14 @@ Auditors (bryant-opus-55, non-author agents): audit-1 R1 = 2 MINOR; audit-2 R2/R
 - A3-F1 Enter after clicking action button; F2 bogus aria-disabled removed; F3 non-integer iterations rejected; F4 villain card backs count = hero card count from API; F5 mobile stacks overlap -> static flex layout <560px; plus spot rows collapsing on mobile (flex-shrink:0).
 - Backend nit: feedback 'most-weighted alternative' no longer repeats best_action.
 Regression tests: tests/test_practice_w3_regressions.py (11). Full suite 1018 passed.
+
+## W3 re-audit round 2 (2026-10-05T02:11:53Z)
+R1: 1 MAJOR (stack test varied bet size too; stack alone inert on river). R2/R4: 1 MAJOR + 3 MINOR, suite 1018. R3: 2 MINOR. All reproduced and repaired:
+- R1-F1: stack test rewritten on allstreet route with bet size fixed (stacks 40 vs 400 -> strategy/Q differ). Decision: river backend legitimately stack-inert once stack covers bet; documented.
+- R2-F1: api_v4._float OverflowError -> ValueError (legacy ops no longer 500).
+- R2-F2: JSON responses send 'Connection: close' when closing.
+- R2-F3: body read under whole-request deadline (anti-trickle) via _read_body.
+- R2-F4: all unknown methods -> 405 JSON (+Allow on known paths); protocol errors (400/414/431/505) now JSON with security headers.
+- R3-F1: Enter on a focused action button selects THAT action then submits (verified in browser: Check selected, Enter on Bet 33 -> submits bet[33]).
+- R3-F2: topbar not sticky <=900px.
+Regression tests now 15 in tests/test_practice_w3_regressions.py. Full suite 1022 passed.

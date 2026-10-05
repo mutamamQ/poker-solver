@@ -1074,3 +1074,4 @@ div.range-table .range-row { grid-template-columns: 96px minmax(120px, 1fr) minm
   .table-felt .seat { position: static; transform: none; }
 }
 #spot-list .spot-item { flex-shrink: 0; }
+@media (max-width: 900px) { .topbar { position: static; } }

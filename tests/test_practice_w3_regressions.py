@@ -121,14 +121,76 @@ def test_pot_change_changes_action_values():
     assert _max_diff(a.action_values, b.action_values) > TOL
 
 
-# --- audit-1 F2: stack changes the answer (stack-capped shove size)
+# --- audit-1 F2 / reaudit F1: stack ALONE changes the answer (allstreet route; bet size fixed)
 def test_stack_change_changes_answer():
-    spot = generate_catalog(families=("river-oop-bet-or-check",), solve=SolveParams(iterations=60), limit=1)[0]
+    from poker_solver.cards import parse_cards
+    from poker_solver.practice.models import Action, PracticeSpot, WeightedCombo
+    board = parse_cards(["Td", "8h", "2c"])
+    r0 = (WeightedCombo(parse_cards(["As", "Ah"]), 1.0), WeightedCombo(parse_cards(["5s", "4s"]), 1.0))
+    r1 = (WeightedCombo(parse_cards(["Qs", "Qh"]), 1.0), WeightedCombo(parse_cards(["Jd", "Jc"]), 1.0))
+    base = PracticeSpot(
+        family="flop-check-small-tree", backend="allstreet", game_type="heads-up", street="flop",
+        board=board, hero_seat=1, villain_seats=(0,), ranges=(r0, r1), pot=100, stacks=(100, 100),
+        action_history=(Action("CHECK"),), bet_sizes=(33,), hero_hand=parse_cards(["Qs", "Qh"]),
+        solve=SolveParams(iterations=15),
+        backend_extra={"allowed_runouts": [list(parse_cards(["3d", "7c"]))], "betting_mode": "no-limit",
+                       "max_nodes": 4000, "max_depth": 40},
+    )
     ad = SolverAdapter()
-    short = dataclasses.replace(spot, stacks=(40, 40), bet_sizes=(40,))
-    deep = dataclasses.replace(spot, stacks=(150, 150), bet_sizes=(150,))
+    short = dataclasses.replace(base, stacks=(40, 40))
+    deep = dataclasses.replace(base, stacks=(400, 400))
+    assert short.bet_sizes == deep.bet_sizes == base.bet_sizes
     assert short.params_hash() != deep.params_hash()
     a, b = ad.solve(short), ad.solve(deep)
-    check_a = [p for act, p in a.strategy.items() if act.kind == "check"][0]
-    check_b = [p for act, p in b.strategy.items() if act.kind == "check"][0]
-    assert abs(check_a - check_b) > 1e-3
+    assert _max_diff(a.strategy, b.strategy) > 1e-3 or _max_diff(a.action_values, b.action_values) > 1e-3
+
+
+# --- reaudit-2 F1: legacy v4 _float overflow -> ValueError
+def test_api_v4_float_overflow_is_value_error():
+    from poker_solver.api_v4 import _float
+    with pytest.raises(ValueError, match="finite"):
+        _float(10 ** 400, "weight")
+
+
+# --- reaudit-2 F2: error responses that close the connection say so
+def test_error_close_sends_connection_close(live):
+    conn = HTTPConnection("127.0.0.1", live, timeout=10)
+    conn.request("PUT", "/api/v4", body=b"{}")
+    r = conn.getresponse(); r.read()
+    assert r.status == 405
+    assert (r.getheader("Connection") or "").lower() == "close"
+
+
+# --- reaudit-2 F3: trickled body bounded by a whole-request deadline
+def test_trickled_body_hits_total_deadline(live):
+    s = socket.create_connection(("127.0.0.1", live), timeout=10)
+    try:
+        s.sendall(b"POST /api/v4 HTTP/1.1\r\nHost: x\r\nContent-Length: 50\r\n\r\n")
+        t0 = time.monotonic()
+        closed = False
+        for _ in range(12):
+            time.sleep(0.3)
+            try:
+                s.sendall(b" ")
+            except OSError:
+                closed = True
+                break
+        s.settimeout(3)
+        data = b""
+        try:
+            data = s.recv(4096)
+        except OSError:
+            pass
+        assert closed or data.startswith(b"HTTP/1.1 400") or data == b""
+        assert time.monotonic() - t0 < 6.0
+    finally:
+        s.close()
+
+
+# --- reaudit-2 F4a: non-alpha unknown methods are 405 JSON too
+def test_nonalpha_method_is_405(live):
+    conn = HTTPConnection("127.0.0.1", live, timeout=10)
+    conn.request("M-SEARCH", "/")
+    r = conn.getresponse()
+    assert r.status == 405 and r.getheader("Allow") == "GET, HEAD"
+    assert "error" in json.loads(r.read())

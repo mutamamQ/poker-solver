@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import argparse
 import json
+from http import HTTPStatus
+import time
 import logging
 import os
 import threading
@@ -177,11 +179,28 @@ class PracticeHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
+        if getattr(self, "close_connection", False):
+            self.send_header("Connection", "close")
         for k, v in (extra_headers or {}).items():
             self.send_header(k, v)
         self.end_headers()
         if self.command != "HEAD":
             self.wfile.write(body)
+
+    def _read_body(self, length: int) -> bytes | None:
+        """Read exactly ``length`` bytes under a whole-request deadline (anti-trickle)."""
+        deadline = time.monotonic() + float(self.timeout or 30)
+        chunks: list[bytes] = []
+        remaining = length
+        while remaining > 0:
+            if time.monotonic() > deadline:
+                return None
+            chunk = self.rfile.read1(min(remaining, 65536))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        return b"".join(chunks)
 
     def _error(self, status: int, message: str, extra_headers: dict[str, str] | None = None) -> None:
         headers = dict(_ERROR_SECURITY_HEADERS)
@@ -254,8 +273,8 @@ class PracticeHandler(BaseHTTPRequestHandler):
             self.close_connection = True
             self._error(413, f"request body exceeds {MAX_BODY_BYTES} bytes")
             return
-        raw = self.rfile.read(length) if length else b""
-        if len(raw) != length:
+        raw = self._read_body(length)
+        if raw is None or len(raw) != length:
             self.close_connection = True
             self._error(400, "incomplete request body")
             return
@@ -296,16 +315,17 @@ class PracticeHandler(BaseHTTPRequestHandler):
 
     def send_error(self, code: int, message: str | None = None, explain: str | None = None) -> None:
         """JSON error bodies everywhere; unknown methods (stdlib 501) become 405."""
-        if code == 501 and self.command and self.command.isalpha():
-            self.close_connection = True
-            self._error(405, f"method {self.command} not allowed",
-                        None)
-            return
-        if code in (400, 408, 414, 431) or self.command is None or not hasattr(self, "headers"):
-            super().send_error(code, message, explain)
-            return
         self.close_connection = True
-        self._error(code, message or "error")
+        if code == 501 and self.command:
+            path = self._path() if getattr(self, "path", None) else ""
+            extra = {"Allow": "POST" if path == API_PATH else "GET, HEAD"} if path in KNOWN_PATHS else None
+            self._error(405, "method not allowed", extra)
+            return
+        try:
+            phrase = HTTPStatus(code).phrase
+        except ValueError:
+            phrase = "error"
+        self._error(code, message or phrase)
 
 
 def make_server(

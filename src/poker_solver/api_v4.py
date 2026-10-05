@@ -57,7 +57,10 @@ def _float(value: Any, label: str, *, finite: bool = True, nonnegative: bool = F
         raise ValueError(f"{label} must be a number")
     if not isinstance(value, (int, float)):
         raise ValueError(f"{label} must be a number")
-    result = float(value)
+    try:
+        result = float(value)
+    except OverflowError as exc:
+        raise ValueError(f"{label} must be finite") from exc
     if finite and not isfinite(result):
         raise ValueError(f"{label} must be finite")
     if nonnegative and result < 0:
