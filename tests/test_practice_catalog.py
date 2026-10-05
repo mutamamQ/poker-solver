@@ -24,7 +24,7 @@ from poker_solver.practice.models import SolveParams
 def test_families_and_size():
     assert set(("kuhn-intro", "river-oop-bet-or-check", "river-ip-facing-bet")) <= set(FAMILIES)
     spots = generate_catalog()
-    assert 20 <= len(spots) <= 40
+    assert 20 <= len(spots) <= 100  # W4: four solver-backed families added (36 -> 72)
     assert {s.family for s in spots} == set(FAMILIES)
     assert sum(s.family == "kuhn-intro" for s in spots) == 12
 

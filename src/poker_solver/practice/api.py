@@ -5,6 +5,12 @@ Operations (see research/practice-mode/w1/task-2.md for the exact response shape
 * ``practice-list-spots``  {families?: [str], seed?: int, limit?: int}
 * ``practice-solve-spot``  {spot_id: str, families?: [str], seed?: int, solve?: SolveParams}
 * ``practice-submit-play`` {spot_id: str, play: Play, families?, seed?, solve?, user?: str}
+* ``practice-progress``    {user?: str, spot_id?: str}            (provenance null)
+* ``practice-leaderboard`` {limit?: int 1..100 = 20, family?: str} (provenance null)
+
+``practice-submit-play`` records the attempt in the persisted :class:`ProgressStore`
+and returns the updated per-spot entry as ``result.progress`` (``null`` if the store
+failed -- recording never fails a submit).
 
 Every response is ``{"version": 4, "operation": op, "result": ..., "provenance": ...}``.
 Validation is fail-closed: unknown/missing keys and wrong types (bool is not int) raise
@@ -15,12 +21,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import sys
+import threading
 from typing import Any, Mapping, Sequence
 
 from .adapter import SolverAdapter
 from .catalog import FAMILIES, find_spot, generate_catalog
 from .models import SolveParams
+from .progress import DEFAULT_USER, ProgressStore, validate_user
 from .scoring import score_play
 
 __all__ = [
@@ -28,18 +37,70 @@ __all__ = [
     "MAX_ITERATIONS",
     "ALGORITHMS",
     "handle_practice",
+    "set_progress_store",
     "main",
 ]
 
 PRACTICE_OPERATIONS = frozenset(
-    {"practice-list-spots", "practice-solve-spot", "practice-submit-play"}
+    {"practice-list-spots", "practice-solve-spot", "practice-submit-play",
+     "practice-progress", "practice-leaderboard"}
 )
 MAX_ITERATIONS = 20000
 ALGORITHMS = frozenset({"vanilla-cfr", "external-sampling-mccfr"})
+LEADERBOARD_MAX = 100
+LEADERBOARD_DEFAULT = 20
+
+_LOG = logging.getLogger(__name__)
+
+
+def _build_cache() -> Any:
+    """Persistent DiskSolveCache keyed by full params_hash; dict fallback (fail-soft)."""
+    try:
+        from .solve_cache import DiskSolveCache
+    except ImportError as exc:
+        _LOG.info("practice: solve_cache module unavailable, using in-memory dict: %s", exc)
+        return {}
+    try:
+        return DiskSolveCache.from_env()
+    except Exception as exc:  # noqa: BLE001 - missing module / unwritable dir
+        _LOG.warning("practice: disk solve cache unavailable, using in-memory dict: %s", exc)
+        return {}
+
 
 # Module-level adapter: its cache is keyed by the spot's params_hash, so repeated
-# solve/submit calls for identical solve parameters reuse one solve.
-_ADAPTER = SolverAdapter()
+# solve/submit calls for identical solve parameters reuse one solve (across
+# processes too when the disk cache is available).
+_ADAPTER = SolverAdapter(cache=_build_cache())
+
+# Progress store is opened lazily on first use so importing this module never
+# touches the filesystem; ``None`` + ``_STORE_FAILED`` means "unavailable".
+_STORE: ProgressStore | None = None
+_STORE_FAILED = False
+_STORE_LOCK = threading.Lock()
+
+
+def _progress_store(*, required: bool) -> ProgressStore | None:
+    """Return the shared store. ``required`` -> raise ValueError when unavailable."""
+    global _STORE, _STORE_FAILED
+    with _STORE_LOCK:
+        if _STORE is None and not _STORE_FAILED:
+            try:
+                _STORE = ProgressStore.from_env()
+            except Exception as exc:  # noqa: BLE001 - fail-soft
+                _LOG.warning("practice: progress store unavailable: %s", exc)
+                _STORE_FAILED = True
+        store = _STORE
+    if store is None and required:
+        raise ValueError("progress store unavailable")
+    return store
+
+
+def set_progress_store(store: ProgressStore | None) -> None:
+    """Replace the shared store (tests / embedding). ``None`` re-enables lazy open."""
+    global _STORE, _STORE_FAILED
+    with _STORE_LOCK:
+        _STORE = store
+        _STORE_FAILED = False
 
 
 # --------------------------------------------------------------------------- validation
@@ -158,18 +219,63 @@ def _solve_spot(payload: Any) -> tuple[Any, Any]:
 def _submit_play(payload: Any) -> tuple[Any, Any]:
     obj = _payload(payload, {"spot_id", "play"}, {"families", "seed", "solve", "user"},
                    "practice-submit-play")
-    user = _str(obj["user"], "user") if "user" in obj else "local"
+    user = validate_user(obj["user"]) if "user" in obj else DEFAULT_USER
     spot = _resolve_spot(obj)
     solved = _ADAPTER.solve(spot)
     score = score_play(solved, obj["play"])
-    result = {"user": user, "score": score.to_json(), "solved": solved.to_json()}
+    result = {"user": user, "score": score.to_json(), "solved": solved.to_json(),
+              "progress": _record(user, spot, score)}
     return result, solved.provenance.to_json()
+
+
+def _record(user: str, spot: Any, score: Any) -> dict[str, Any] | None:
+    """Persist one scored attempt; any store failure -> None (never fails the submit)."""
+    try:
+        store = _progress_store(required=False)
+        if store is None:
+            return None
+        return store.record(
+            user=user, spot_id=spot.spot_id, family=spot.family, street=spot.street,
+            game_type=spot.game_type, score=score.score, grade=score.grade,
+            ev_loss_pct=score.ev_loss_pct_pot, params_hash=spot.params_hash())
+    except Exception as exc:  # noqa: BLE001 - fail-soft by contract
+        _LOG.warning("practice: failed to record progress: %s", exc)
+        return None
+
+
+def _progress(payload: Any) -> tuple[Any, Any]:
+    obj = _payload(payload, set(), {"user", "spot_id"}, "practice-progress")
+    user = validate_user(obj["user"]) if "user" in obj else DEFAULT_USER
+    spot_id = _str(obj["spot_id"], "spot_id") if "spot_id" in obj else None
+    store = _progress_store(required=True)
+    try:
+        return store.progress(user, spot_id), None
+    except ValueError:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise ValueError(f"progress store error: {exc}") from exc
+
+
+def _leaderboard(payload: Any) -> tuple[Any, Any]:
+    obj = _payload(payload, set(), {"limit", "family"}, "practice-leaderboard")
+    limit = (_int(obj["limit"], "limit", minimum=1, maximum=LEADERBOARD_MAX)
+             if "limit" in obj else LEADERBOARD_DEFAULT)
+    family = _str(obj["family"], "family") if "family" in obj else None
+    store = _progress_store(required=True)
+    try:
+        return {"entries": store.leaderboard(limit=limit, family=family)}, None
+    except ValueError:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise ValueError(f"progress store error: {exc}") from exc
 
 
 _HANDLERS = {
     "practice-list-spots": _list_spots,
     "practice-solve-spot": _solve_spot,
     "practice-submit-play": _submit_play,
+    "practice-progress": _progress,
+    "practice-leaderboard": _leaderboard,
 }
 
 
@@ -208,6 +314,12 @@ def _build_parser() -> argparse.ArgumentParser:
     p_submit.add_argument("amount", nargs="?", type=int)
     p_submit.add_argument("--iterations", type=int)
     p_submit.add_argument("--user")
+    p_progress = sub.add_parser("progress", help="show persisted progress for a user")
+    p_progress.add_argument("--user")
+    p_progress.add_argument("--spot-id", dest="spot_id")
+    p_board = sub.add_parser("leaderboard", help="show the persisted leaderboard")
+    p_board.add_argument("--limit", type=int)
+    p_board.add_argument("--family")
     return parser
 
 
@@ -227,6 +339,20 @@ def main(argv: Sequence[str] | None = None) -> int:
         elif args.command == "solve":
             payload = {"spot_id": args.spot_id, **_solve_override(args.iterations)}
             response = handle_practice("practice-solve-spot", payload)
+        elif args.command == "progress":
+            payload = {}
+            if args.user is not None:
+                payload["user"] = args.user
+            if args.spot_id is not None:
+                payload["spot_id"] = args.spot_id
+            response = handle_practice("practice-progress", payload)
+        elif args.command == "leaderboard":
+            payload = {}
+            if args.limit is not None:
+                payload["limit"] = args.limit
+            if args.family is not None:
+                payload["family"] = args.family
+            response = handle_practice("practice-leaderboard", payload)
         else:
             play: dict[str, Any] = {"kind": args.kind}
             if args.amount is not None:

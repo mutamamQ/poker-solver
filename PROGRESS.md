@@ -767,3 +767,4 @@ Final full suite: 1026 passed.
 ## W4 plan (2026-10-05T03:29:27Z) — completion per W4_COMPLETION_BRIEF.md
 Decisions: W4 = 5 parallel bryant-opus-55 implementers (A families+adapter, B disk solve cache, C progress tracker+API+CLI, D UI, E solver-evaluation benchmark), contract research/practice-mode/w4/CONTRACT.md. W5 = 3 non-author auditors + docs writer (PRACTICE_MODE.md, docs/). Repair, re-audit until clean, tag practice-mode-complete, push.
 Orchestrator pre-work: api_v4 allows practice-progress/practice-leaderboard; tests/conftest.py isolates cache/data dirs.
+- 2026-10-05T03:33:05Z W4 dispatched deleg_cba2c6e1, 5 tasks on bryant-opus-55 (provider bryant). First dispatch attempt rejected locally for missing explicit model (require_explicit_model) — not a provider issue.

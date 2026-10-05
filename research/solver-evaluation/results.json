@@ -1,0 +1,1561 @@
+{
+  "schema_version": "solver-evaluation-v1",
+  "mode": "full",
+  "started_at": "2026-10-05T05:39:12+00:00",
+  "finished_at": "2026-10-05T05:44:31+00:00",
+  "wall_time_s": 319.1659050886519,
+  "host": {
+    "platform": "Linux-6.8.0-138-generic-x86_64-with-glibc2.39",
+    "python": "3.11.16",
+    "implementation": "CPython",
+    "machine": "x86_64",
+    "processor": "x86_64",
+    "cpu_count": 2,
+    "hostname": "genomix-server",
+    "loadavg_at_start": [
+      5.16650390625,
+      4.6767578125,
+      4.05615234375
+    ]
+  },
+  "git": {
+    "commit": "ed886c8ca9e441713f61052f31b845c94401c291",
+    "branch": "feat/practice-mode",
+    "dirty": true
+  },
+  "solver_version": "0.1.0",
+  "verdict_rule": "Each criterion is graded from its THRESHOLDS entry. A capability's verdict is the worst of its evidence criteria and its documented scope cap. overall = worst(all criteria + all capabilities) with FAIL > PARTIAL > PASS. correctness_verdict = worst over the correctness criteria only (excludes timing, default-solve quality and scale).",
+  "thresholds": {
+    "C1-kuhn-analytic": {
+      "reference": "Kuhn (1950): P0 game value -1/18; alpha-family equilibrium structure",
+      "pass_value_error": 0.001,
+      "partial_value_error": 0.01,
+      "pass_final_nash_conv": 0.02,
+      "pass_ratio_last_first": 0.5,
+      "pass_loglog_slope_max": -0.35,
+      "value_error_le_nash_conv_every_checkpoint": true,
+      "structure_tolerance": "5 x final nash_conv"
+    },
+    "C2-kuhn-mccfr": {
+      "reference": "Kuhn value -1/18 via external-sampling MCCFR (seed 0)",
+      "pass_value_error": 0.005,
+      "partial_value_error": 0.02,
+      "pass_final_nash_conv": 0.05,
+      "require_decreasing": true
+    },
+    "C3-river-closed-form": {
+      "reference": "polarized river toy, closed form: air bet B/(P+B), call P/(P+B), EV0 PB/(2(P+B))",
+      "pass_freq_error": 0.03,
+      "partial_freq_error": 0.08,
+      "pass_value_error": "<= nash_conv (exploitability bound |u0 - v*| <= NashConv)",
+      "nuts_bet_min": 0.95,
+      "require_monotone_in_bet_size": true
+    },
+    "C4-sizing-menu": {
+      "reference": "menu {5,20}: equilibrium value = max single-size closed-form value; small size unused",
+      "pass_value_error": "<= nash_conv of the menu solve",
+      "pass_small_size_weight": 0.05,
+      "partial_small_size_weight": 0.15
+    },
+    "C5-convergence": {
+      "metric": "NashConv(last checkpoint) / NashConv(first checkpoint)",
+      "pass_ratio": 0.5,
+      "partial_ratio": 1.0,
+      "note": "checkpoint (not per-iteration) monotonicity, per research/validation_strategy.md 6"
+    },
+    "C6-br-oracle-agreement": {
+      "metric": "|repo nash_conv (or 3p unilateral certificate) - independent oracle| / max(1, |oracle|)",
+      "pass_rel_error": 1e-09,
+      "partial_rel_error": 1e-06
+    },
+    "C7-kuhn3-analytic": {
+      "reference": "3-player Kuhn (Szafron, Gibson & Sturtevant 2013): seat1 = -1/48, seat0 in [-3/48,-1/48], seat2 in [1/24,1/12]",
+      "pass_final_nash_conv": 0.02,
+      "pass_seat1_error": "<= final nash_conv (heuristic: n-player has no minimax bound)",
+      "pass_ranges_slack": "final nash_conv",
+      "partial": "NashConv decreasing (ratio < 1) and seat1 error <= 1e-2"
+    },
+    "C8-determinism": {
+      "requirement": "identical params -> identical strategy, action values and params_hash; MCCFR identical for equal seeds and different for different seeds; catalog deterministic",
+      "float_tolerance": 0.0
+    },
+    "C9-param-sensitivity": {
+      "requirement": "each perturbation (iterations, pot, bet size, villain range, stack) changes params_hash AND the solved strategy or action values",
+      "min_output_change": 1e-09,
+      "partial": "every params_hash changes but some output is unchanged"
+    },
+    "C10-score-crosscheck": {
+      "requirement": "practice Q / strategy / pot / score / grade == independent recomputation",
+      "pass_abs_error": 1e-09,
+      "partial_abs_error": 1e-06,
+      "score_formula": "100*max(0, 1-(best_q-chosen_q)/(best_q-worst_q))",
+      "grade_bounds_pct_pot": [
+        0.25,
+        1.0,
+        3.0,
+        8.0
+      ]
+    },
+    "C11-practice-solve-quality": {
+      "metric": "exploitability % of starting pot = 100 * (NashConv / n_players) / spot.pot at the family default solve (NashConv from the independent oracle)",
+      "pass_pct_pot": 1.0,
+      "partial_pct_pot": 5.0
+    },
+    "C12-practice-timing": {
+      "metric": "cold SolverAdapter.solve wall time at the family default (empty cache)",
+      "pass_seconds": 20.0,
+      "partial_seconds": 90.0,
+      "source": "W4 CONTRACT cold budget 20 s; server timeout 90 s"
+    },
+    "C13-equity-icm": {
+      "requirement": "exact equity == hand-derived win/tie/loss counts; ICM == Malmuth-Harville finishing-order enumeration",
+      "icm_abs_error": 1e-09
+    },
+    "C14-scale": {
+      "metric": "projected seconds for 1000 vanilla-CFR iterations on a single-bet-size river with 100 combos per side (power-law fit of s/iteration vs deals; a LOWER bound for realistic multi-size trees)",
+      "pass_seconds": 60.0,
+      "partial_seconds": 3600.0
+    },
+    "C15-all-in": {
+      "requirement": "all-in-only wager tree: zero-sum terminals, all-in showdowns reached, NashConv decreases; no RAISE whose target equals the CALL target and no decision node for a seat with 0 chips behind",
+      "partial": "value checks pass and the structural defect is value-neutral (gap <= 1e-9)"
+    },
+    "C16-mixed-strategy": {
+      "requirement": "where theory requires a strictly mixed equilibrium action (Kuhn P1 J-bluff and Q-call = 1/3; river-toy air bet = B/(P+B)) the solver's mix lies strictly inside",
+      "mixed_band": [
+        0.05,
+        0.95
+      ]
+    }
+  },
+  "criteria": [
+    {
+      "id": "C1-kuhn-analytic",
+      "title": "Kuhn poker: CFR vs analytic value -1/18 and alpha-family structure",
+      "verdict": "PASS",
+      "thresholds": {
+        "reference": "Kuhn (1950): P0 game value -1/18; alpha-family equilibrium structure",
+        "pass_value_error": 0.001,
+        "partial_value_error": 0.01,
+        "pass_final_nash_conv": 0.02,
+        "pass_ratio_last_first": 0.5,
+        "pass_loglog_slope_max": -0.35,
+        "value_error_le_nash_conv_every_checkpoint": true,
+        "structure_tolerance": "5 x final nash_conv"
+      },
+      "evidence": {
+        "reference_value_p0": -0.05555555555555555,
+        "checkpoints": [
+          {
+            "iterations": 100,
+            "train_s_cumulative": 0.14487052522599697,
+            "nash_conv": 0.05134947169389606,
+            "exploitability": 0.02567473584694803,
+            "ev0": -0.055987211609916265,
+            "value_error": 0.00043165605436071286
+          },
+          {
+            "iterations": 300,
+            "train_s_cumulative": 0.3552709650248289,
+            "nash_conv": 0.02707957628677843,
+            "exploitability": 0.013539788143389214,
+            "ev0": -0.055637657306868565,
+            "value_error": 8.21017513130129e-05
+          },
+          {
+            "iterations": 1000,
+            "train_s_cumulative": 1.3494546771980822,
+            "nash_conv": 0.014538212817128915,
+            "exploitability": 0.0072691064085644574,
+            "ev0": -0.05555721950490666,
+            "value_error": 1.663949351110583e-06
+          },
+          {
+            "iterations": 3000,
+            "train_s_cumulative": 3.551228707190603,
+            "nash_conv": 0.008389052571772526,
+            "exploitability": 0.004194526285886263,
+            "ev0": -0.05546838931093864,
+            "value_error": 8.71662446169097e-05
+          },
+          {
+            "iterations": 10000,
+            "train_s_cumulative": 9.61633134027943,
+            "nash_conv": 0.004635572629949097,
+            "exploitability": 0.0023177863149745487,
+            "ev0": -0.05554639582927165,
+            "value_error": 9.159726283902714e-06
+          }
+        ],
+        "loglog_slope": -0.5194114181965435,
+        "ratio_last_first": 0.09027498194300079,
+        "value_error_within_nash_conv_bound": true,
+        "structure_tolerance": 0.023177863149745487,
+        "structure": {
+          "p0_J_bet_alpha<=1/3": {
+            "value": 0.20775469285349502,
+            "ok": true
+          },
+          "p0_K_bet=3alpha": {
+            "value": 0.6125928355814904,
+            "ok": true
+          },
+          "p0_Q_call=alpha+1/3": {
+            "value": 0.5507871749864962,
+            "ok": true
+          },
+          "p0_Q_bet=0": {
+            "value": 0.00034583333333333335,
+            "ok": true
+          },
+          "p0_J_call=0": {
+            "value": 3.155588272279528e-05,
+            "ok": true
+          },
+          "p0_K_call=1": {
+            "value": 0.9999354684107674,
+            "ok": true
+          },
+          "p1_J_bluff=1/3": {
+            "value": 0.334544727531795,
+            "ok": true
+          },
+          "p1_Q_call=1/3": {
+            "value": 0.33928463036725276,
+            "ok": true
+          },
+          "p1_K_call=1": {
+            "value": 0.99995,
+            "ok": true
+          },
+          "p1_K_bet=1": {
+            "value": 0.99995,
+            "ok": true
+          },
+          "p1_J_call=0": {
+            "value": 5e-05,
+            "ok": true
+          }
+        },
+        "seconds_per_iteration": 0.000961633134027943
+      },
+      "wall_time_s": 9.61980648804456
+    },
+    {
+      "id": "C2-kuhn-mccfr",
+      "title": "Kuhn poker: external-sampling MCCFR vs -1/18",
+      "verdict": "PASS",
+      "thresholds": {
+        "reference": "Kuhn value -1/18 via external-sampling MCCFR (seed 0)",
+        "pass_value_error": 0.005,
+        "partial_value_error": 0.02,
+        "pass_final_nash_conv": 0.05,
+        "require_decreasing": true
+      },
+      "evidence": {
+        "seed": 0,
+        "checkpoints": [
+          {
+            "iterations": 1000,
+            "train_s_cumulative": 0.08922161580994725,
+            "nash_conv": 0.0487158453032949,
+            "ev0": -0.05460732763637194,
+            "value_error": 0.000948227919183614
+          },
+          {
+            "iterations": 5000,
+            "train_s_cumulative": 0.5834839008748531,
+            "nash_conv": 0.0312699458167181,
+            "ev0": -0.05554663534356119,
+            "value_error": 8.920211994362104e-06
+          },
+          {
+            "iterations": 20000,
+            "train_s_cumulative": 2.1447276566177607,
+            "nash_conv": 0.0055109197352420924,
+            "ev0": -0.05551758997070494,
+            "value_error": 3.79655848506133e-05
+          }
+        ],
+        "decreasing": true
+      },
+      "wall_time_s": 2.144766677170992
+    },
+    {
+      "id": "C3-river-closed-form",
+      "title": "Polarized river toy vs closed-form frequencies/value (3 sizes)",
+      "verdict": "PASS",
+      "thresholds": {
+        "reference": "polarized river toy, closed form: air bet B/(P+B), call P/(P+B), EV0 PB/(2(P+B))",
+        "pass_freq_error": 0.03,
+        "partial_freq_error": 0.08,
+        "pass_value_error": "<= nash_conv (exploitability bound |u0 - v*| <= NashConv)",
+        "nuts_bet_min": 0.95,
+        "require_monotone_in_bet_size": true
+      },
+      "evidence": {
+        "pot": 10.0,
+        "stack": 20,
+        "rows": [
+          {
+            "bet": 5,
+            "iterations": 4000,
+            "seconds": 4.319248411804438,
+            "nash_conv": 0.04432856840552457,
+            "air_bet": 0.33861808801026105,
+            "ref_air_bet": 0.3333333333333333,
+            "call": 0.6611541581368138,
+            "ref_call": 0.6666666666666666,
+            "nuts_bet": 0.9985783443744242,
+            "ev0": 1.6645417536901155,
+            "ref_ev0": 1.6666666666666667,
+            "value_error": 0.002124912976551263,
+            "freq_error": 0.005512508529852855
+          },
+          {
+            "bet": 10,
+            "iterations": 4000,
+            "seconds": 3.495417586993426,
+            "nash_conv": 0.06654076093394323,
+            "air_bet": 0.5035868663889694,
+            "ref_air_bet": 0.5,
+            "call": 0.4919394564606625,
+            "ref_call": 0.5,
+            "nuts_bet": 0.9983392577415182,
+            "ev0": 2.4962146945582786,
+            "ref_ev0": 2.5,
+            "value_error": 0.0037853054417213983,
+            "freq_error": 0.008060543539337495
+          },
+          {
+            "bet": 20,
+            "iterations": 4000,
+            "seconds": 3.5039108521305025,
+            "nash_conv": 0.08931557076912178,
+            "air_bet": 0.6517041253549121,
+            "ref_air_bet": 0.6666666666666666,
+            "call": 0.33043276049126374,
+            "ref_call": 0.3333333333333333,
+            "nuts_bet": 0.9983502966197327,
+            "ev0": 3.3272446148797634,
+            "ref_ev0": 3.3333333333333335,
+            "value_error": 0.006088718453570063,
+            "freq_error": 0.014962541311754562
+          }
+        ],
+        "monotone_in_bet": true,
+        "max_freq_error": 0.014962541311754562,
+        "values_within_bound": true
+      },
+      "wall_time_s": 11.336448381654918
+    },
+    {
+      "id": "C4-sizing-menu",
+      "title": "Multi-size menu: solver picks the value-maximizing size",
+      "verdict": "PASS",
+      "thresholds": {
+        "reference": "menu {5,20}: equilibrium value = max single-size closed-form value; small size unused",
+        "pass_value_error": "<= nash_conv of the menu solve",
+        "pass_small_size_weight": 0.05,
+        "partial_small_size_weight": 0.15
+      },
+      "evidence": {
+        "iterations": 3000,
+        "menus": {
+          "(5,)": {
+            "seconds": 0.33732409216463566,
+            "ev0": 1.6636307249639408,
+            "nash_conv": 0.04688223473749087,
+            "nuts_policy": {
+              "CHECK": 0.0018955408341009893,
+              "RAISE:5": 0.998104459165899
+            },
+            "closed_form_ev0": [
+              1.6666666666666667
+            ]
+          },
+          "(20,)": {
+            "seconds": 0.7894812356680632,
+            "ev0": 3.325783156314619,
+            "nash_conv": 0.10460237705410158,
+            "nuts_policy": {
+              "CHECK": 0.0022047150162343644,
+              "RAISE:20": 0.9977952849837657
+            },
+            "closed_form_ev0": [
+              3.3333333333333335
+            ]
+          },
+          "(5, 20)": {
+            "seconds": 1.7893847399391234,
+            "ev0": 3.3146083154058092,
+            "nash_conv": 0.1035688203105245,
+            "nuts_policy": {
+              "CHECK": 0.0009662462715650144,
+              "RAISE:5": 0.0049426561242370826,
+              "RAISE:20": 0.9940910976041979
+            },
+            "closed_form_ev0": [
+              1.6666666666666667,
+              3.3333333333333335
+            ]
+          }
+        },
+        "menu_reference_ev0": 3.3333333333333335,
+        "menu_value_error": 0.018725017927524235,
+        "nuts_small_size_weight": 0.0049426561242370826,
+        "single_size_values_within_bound": true
+      },
+      "wall_time_s": 2.918454403989017
+    },
+    {
+      "id": "C5-convergence-river",
+      "title": "NashConv vs iterations: river backend (catalog input)",
+      "verdict": "PASS",
+      "thresholds": {
+        "metric": "NashConv(last checkpoint) / NashConv(first checkpoint)",
+        "pass_ratio": 0.5,
+        "partial_ratio": 1.0,
+        "note": "checkpoint (not per-iteration) monotonicity, per research/validation_strategy.md 6"
+      },
+      "evidence": {
+        "players": 2,
+        "pot": 100.0,
+        "infosets": 16,
+        "checkpoints": [
+          {
+            "iterations": 25,
+            "train_s_cumulative": 0.1953513571061194,
+            "nash_conv": 2.9503494271987307,
+            "nash_conv_pct_pot": 2.9503494271987307
+          },
+          {
+            "iterations": 100,
+            "train_s_cumulative": 0.8985365759581327,
+            "nash_conv": 0.8899122413589211,
+            "nash_conv_pct_pot": 0.8899122413589211
+          },
+          {
+            "iterations": 400,
+            "train_s_cumulative": 4.26981607824564,
+            "nash_conv": 0.4259165757021961,
+            "nash_conv_pct_pot": 0.4259165757021961
+          },
+          {
+            "iterations": 1600,
+            "train_s_cumulative": 17.66352643445134,
+            "nash_conv": 0.20086752325926938,
+            "nash_conv_pct_pot": 0.20086752325926938
+          }
+        ],
+        "ratio_last_first": 0.0680826214710395,
+        "loglog_slope": -0.634640049987588,
+        "seconds_per_iteration": 0.011039704021532088,
+        "game": "river backend, first river-oop-bet-or-check catalog input (river-oop-bet-or-check/e79981f9d62d)"
+      },
+      "wall_time_s": 17.8362536537461
+    },
+    {
+      "id": "C5-convergence-flop",
+      "title": "NashConv vs iterations: allstreet flop backend",
+      "verdict": "PASS",
+      "thresholds": {
+        "metric": "NashConv(last checkpoint) / NashConv(first checkpoint)",
+        "pass_ratio": 0.5,
+        "partial_ratio": 1.0,
+        "note": "checkpoint (not per-iteration) monotonicity, per research/validation_strategy.md 6"
+      },
+      "evidence": {
+        "players": 2,
+        "pot": 100,
+        "infosets": 104,
+        "checkpoints": [
+          {
+            "iterations": 10,
+            "train_s_cumulative": 0.07233617128804326,
+            "nash_conv": 36.18775050431252,
+            "nash_conv_pct_pot": 36.18775050431252
+          },
+          {
+            "iterations": 40,
+            "train_s_cumulative": 0.31312562618404627,
+            "nash_conv": 23.15199310296594,
+            "nash_conv_pct_pot": 23.15199310296594
+          },
+          {
+            "iterations": 160,
+            "train_s_cumulative": 1.5443037189543247,
+            "nash_conv": 7.968735071157781,
+            "nash_conv_pct_pot": 7.96873507115778
+          },
+          {
+            "iterations": 640,
+            "train_s_cumulative": 4.448316997848451,
+            "nash_conv": 3.611559537292294,
+            "nash_conv_pct_pot": 3.611559537292294
+          }
+        ],
+        "ratio_last_first": 0.0998006089619166,
+        "loglog_slope": -0.575656823575912,
+        "seconds_per_iteration": 0.006950495309138205,
+        "game": "allstreet flop Td8h2c, {AA,54s} vs {QQ,JJ}, runout 3d7c, bet 33, stack 100"
+      },
+      "wall_time_s": 4.54240266373381
+    },
+    {
+      "id": "C5-convergence-turn",
+      "title": "NashConv vs iterations: multistreet turn backend",
+      "verdict": "PASS",
+      "thresholds": {
+        "metric": "NashConv(last checkpoint) / NashConv(first checkpoint)",
+        "pass_ratio": 0.5,
+        "partial_ratio": 1.0,
+        "note": "checkpoint (not per-iteration) monotonicity, per research/validation_strategy.md 6"
+      },
+      "evidence": {
+        "players": 2,
+        "pot": 100,
+        "infosets": 88,
+        "checkpoints": [
+          {
+            "iterations": 10,
+            "train_s_cumulative": 0.061352008022367954,
+            "nash_conv": 28.429351102720858,
+            "nash_conv_pct_pot": 28.429351102720858
+          },
+          {
+            "iterations": 40,
+            "train_s_cumulative": 0.2108679092489183,
+            "nash_conv": 11.335574283369109,
+            "nash_conv_pct_pot": 11.335574283369107
+          },
+          {
+            "iterations": 160,
+            "train_s_cumulative": 0.7527805571444333,
+            "nash_conv": 6.4701783006455855,
+            "nash_conv_pct_pot": 6.4701783006455855
+          },
+          {
+            "iterations": 640,
+            "train_s_cumulative": 2.9100414430722594,
+            "nash_conv": 3.0220719984823496,
+            "nash_conv_pct_pot": 3.0220719984823496
+          }
+        ],
+        "ratio_last_first": 0.10630112476232774,
+        "loglog_slope": -0.5255146903449078,
+        "seconds_per_iteration": 0.004546939754800405,
+        "game": "multistreet turn Td8h2c3d, {AA,54s} vs {QQ,JJ}, rivers {7c,Ks}, bet 50, stack 100"
+      },
+      "wall_time_s": 2.9919387931004167
+    },
+    {
+      "id": "C5-convergence-preflop-hu",
+      "title": "NashConv vs iterations: nplayer_preflop heads-up",
+      "verdict": "PASS",
+      "thresholds": {
+        "metric": "NashConv(last checkpoint) / NashConv(first checkpoint)",
+        "pass_ratio": 0.5,
+        "partial_ratio": 1.0,
+        "note": "checkpoint (not per-iteration) monotonicity, per research/validation_strategy.md 6"
+      },
+      "evidence": {
+        "players": 2,
+        "pot": 3.0,
+        "infosets": 8,
+        "checkpoints": [
+          {
+            "iterations": 10,
+            "train_s_cumulative": 0.005024271085858345,
+            "nash_conv": 0.8881579257339731,
+            "nash_conv_pct_pot": 29.605264191132438
+          },
+          {
+            "iterations": 40,
+            "train_s_cumulative": 0.015336731914430857,
+            "nash_conv": 0.42356983357984457,
+            "nash_conv_pct_pot": 14.118994452661484
+          },
+          {
+            "iterations": 160,
+            "train_s_cumulative": 0.05990436812862754,
+            "nash_conv": 0.18766039743790253,
+            "nash_conv_pct_pot": 6.255346581263417
+          },
+          {
+            "iterations": 640,
+            "train_s_cumulative": 0.23928597336634994,
+            "nash_conv": 0.085160175880447,
+            "nash_conv_pct_pot": 2.8386725293482336
+          },
+          {
+            "iterations": 2560,
+            "train_s_cumulative": 0.9860994215123355,
+            "nash_conv": 0.04108684512941285,
+            "nash_conv_pct_pot": 1.3695615043137617
+          }
+        ],
+        "ratio_last_first": 0.04626074253118747,
+        "loglog_slope": -0.5591242272176203,
+        "seconds_per_iteration": 0.0003851950865282561,
+        "game": "nplayer_preflop 2p, SB {AA,77} vs BB {KK,QQ}, stacks 10, blinds 1/2, all-in raises"
+      },
+      "wall_time_s": 1.0039483890868723
+    },
+    {
+      "id": "C5-convergence-preflop-3p",
+      "title": "NashConv vs iterations: nplayer_preflop 3-player",
+      "verdict": "PASS",
+      "thresholds": {
+        "metric": "NashConv(last checkpoint) / NashConv(first checkpoint)",
+        "pass_ratio": 0.5,
+        "partial_ratio": 1.0,
+        "note": "checkpoint (not per-iteration) monotonicity, per research/validation_strategy.md 6"
+      },
+      "evidence": {
+        "players": 3,
+        "pot": 3.0,
+        "infosets": 23,
+        "checkpoints": [
+          {
+            "iterations": 10,
+            "train_s_cumulative": 0.010032853111624718,
+            "nash_conv": 3.0946224261100115,
+            "nash_conv_pct_pot": 103.15408087033371
+          },
+          {
+            "iterations": 40,
+            "train_s_cumulative": 0.049434558022767305,
+            "nash_conv": 1.3218098591027678,
+            "nash_conv_pct_pot": 44.060328636758925
+          },
+          {
+            "iterations": 160,
+            "train_s_cumulative": 0.17079594498500228,
+            "nash_conv": 0.240976568856128,
+            "nash_conv_pct_pot": 8.032552295204267
+          },
+          {
+            "iterations": 640,
+            "train_s_cumulative": 0.8289116462692618,
+            "nash_conv": 0.09817528417501509,
+            "nash_conv_pct_pot": 3.2725094725005026
+          },
+          {
+            "iterations": 2560,
+            "train_s_cumulative": 3.343461625277996,
+            "nash_conv": 0.05485243179367677,
+            "nash_conv_pct_pot": 1.828414393122559
+          }
+        ],
+        "ratio_last_first": 0.017725080556152736,
+        "loglog_slope": -0.769356949688476,
+        "seconds_per_iteration": 0.0013060396973742171,
+        "game": "nplayer_preflop 3p, BTN {AA,77}, SB KK, BB QQ, stacks 10, blinds 1/2",
+        "metric": "independent n-player NashConv oracle (sum of best-response incentives)"
+      },
+      "wall_time_s": 5.469487295020372
+    },
+    {
+      "id": "C6-br-oracle-agreement",
+      "title": "Repo best response / certificate vs independent oracle",
+      "verdict": "PASS",
+      "thresholds": {
+        "metric": "|repo nash_conv (or 3p unilateral certificate) - independent oracle| / max(1, |oracle|)",
+        "pass_rel_error": 1e-09,
+        "partial_rel_error": 1e-06
+      },
+      "evidence": {
+        "comparisons": [
+          {
+            "game": "kuhn@100",
+            "repo": 0.05134947169389606,
+            "oracle": 0.0513494716938961,
+            "rel_error": 4.163336342344337e-17
+          },
+          {
+            "game": "kuhn@300",
+            "repo": 0.02707957628677843,
+            "oracle": 0.027079576286778526,
+            "rel_error": 9.71445146547012e-17
+          },
+          {
+            "game": "kuhn@1000",
+            "repo": 0.014538212817128915,
+            "oracle": 0.014538212817128887,
+            "rel_error": 2.7755575615628914e-17
+          },
+          {
+            "game": "kuhn@3000",
+            "repo": 0.008389052571772526,
+            "oracle": 0.00838905257177254,
+            "rel_error": 1.3877787807814457e-17
+          },
+          {
+            "game": "kuhn@10000",
+            "repo": 0.004635572629949097,
+            "oracle": 0.00463557262994907,
+            "rel_error": 2.7755575615628914e-17
+          },
+          {
+            "game": "river-toy-B5",
+            "repo": 0.04432856840552457,
+            "oracle": 0.04432856840552457,
+            "rel_error": 0.0
+          },
+          {
+            "game": "river-toy-B10",
+            "repo": 0.06654076093394323,
+            "oracle": 0.06654076093394323,
+            "rel_error": 0.0
+          },
+          {
+            "game": "river-toy-B20",
+            "repo": 0.08931557076912178,
+            "oracle": 0.08931557076912178,
+            "rel_error": 0.0
+          },
+          {
+            "game": "river-catalog@1600",
+            "repo": 0.20086752325926938,
+            "oracle": 0.20086752325925517,
+            "rel_error": 1.4210854715202004e-14
+          },
+          {
+            "game": "flop-allstreet@640",
+            "repo": 3.611559537292294,
+            "oracle": 3.611559537292294,
+            "rel_error": 0.0
+          },
+          {
+            "game": "turn-multistreet@640",
+            "repo": 3.0220719984823496,
+            "oracle": 3.0220719984823567,
+            "rel_error": 2.351177391263097e-15
+          },
+          {
+            "game": "preflop-hu@2560",
+            "repo": 0.04108684512941285,
+            "oracle": 0.04108684512941285,
+            "rel_error": 0.0
+          },
+          {
+            "game": "preflop-3p@2560",
+            "repo": 0.05485243179367655,
+            "oracle": 0.05485243179367677,
+            "rel_error": 2.220446049250313e-16
+          }
+        ],
+        "max_rel_error": 1.4210854715202004e-14
+      },
+      "wall_time_s": 2.844957634806633e-05
+    },
+    {
+      "id": "C7-kuhn3-analytic",
+      "title": "3-player Kuhn vs analytic equilibrium family",
+      "verdict": "PASS",
+      "thresholds": {
+        "reference": "3-player Kuhn (Szafron, Gibson & Sturtevant 2013): seat1 = -1/48, seat0 in [-3/48,-1/48], seat2 in [1/24,1/12]",
+        "pass_final_nash_conv": 0.02,
+        "pass_seat1_error": "<= final nash_conv (heuristic: n-player has no minimax bound)",
+        "pass_ranges_slack": "final nash_conv",
+        "partial": "NashConv decreasing (ratio < 1) and seat1 error <= 1e-2"
+      },
+      "evidence": {
+        "reference": {
+          "seat1": -0.020833333333333332,
+          "seat0_range": [
+            -0.0625,
+            -0.020833333333333332
+          ],
+          "seat2_range": [
+            0.041666666666666664,
+            0.08333333333333333
+          ]
+        },
+        "checkpoints": [
+          {
+            "iterations": 100,
+            "train_s_cumulative": 0.5109410211443901,
+            "nash_conv": 0.08952130377076936,
+            "values": [
+              -0.034555113840937866,
+              -0.013749053679933315,
+              0.04830416752087123
+            ],
+            "seat1_error": 0.007084279653400017
+          },
+          {
+            "iterations": 300,
+            "train_s_cumulative": 1.644814568106085,
+            "nash_conv": 0.031602510935078466,
+            "values": [
+              -0.03834427334605484,
+              -0.016964572727096144,
+              0.05530884607315106
+            ],
+            "seat1_error": 0.003868760606237188
+          },
+          {
+            "iterations": 1000,
+            "train_s_cumulative": 5.661425903439522,
+            "nash_conv": 0.01657131284756508,
+            "values": [
+              -0.029327510901795924,
+              -0.0186096682142039,
+              0.0479371791159999
+            ],
+            "seat1_error": 0.0022236651191294317
+          },
+          {
+            "iterations": 3000,
+            "train_s_cumulative": 14.159323055762798,
+            "nash_conv": 0.006462500148748898,
+            "values": [
+              -0.03014486943075754,
+              -0.01962983695405186,
+              0.04977470638480945
+            ],
+            "seat1_error": 0.0012034963792814726
+          },
+          {
+            "iterations": 10000,
+            "train_s_cumulative": 57.93035294348374,
+            "nash_conv": 0.0021746000790157614,
+            "values": [
+              -0.02823778044769218,
+              -0.020088443106337353,
+              0.048326223554029615
+            ],
+            "seat1_error": 0.0007448902269959791
+          }
+        ],
+        "ratio_last_first": 0.02429142547548347,
+        "values_in_analytic_ranges": true,
+        "infosets": 48
+      },
+      "wall_time_s": 57.974745877087116
+    },
+    {
+      "id": "C8-determinism",
+      "title": "Same params -> identical strategy, values and params_hash",
+      "verdict": "PASS",
+      "thresholds": {
+        "requirement": "identical params -> identical strategy, action values and params_hash; MCCFR identical for equal seeds and different for different seeds; catalog deterministic",
+        "float_tolerance": 0.0
+      },
+      "evidence": {
+        "checks": {
+          "adapter repeat identical (kuhn-intro)": true,
+          "params_hash stable (kuhn-intro)": true,
+          "adapter repeat identical (river-oop-bet-or-check)": true,
+          "params_hash stable (river-oop-bet-or-check)": true,
+          "catalog deterministic": true,
+          "vanilla CFR repeat identical": true,
+          "MCCFR equal seeds identical": true,
+          "MCCFR different seeds differ": true,
+          "n-player CFR repeat identical": true
+        }
+      },
+      "wall_time_s": 2.2509588040411472
+    },
+    {
+      "id": "C9-param-sensitivity",
+      "title": "R1: parameter changes change hash and solver output",
+      "verdict": "PASS",
+      "thresholds": {
+        "requirement": "each perturbation (iterations, pot, bet size, villain range, stack) changes params_hash AND the solved strategy or action values",
+        "min_output_change": 1e-09,
+        "partial": "every params_hash changes but some output is unchanged"
+      },
+      "evidence": {
+        "base_spot": "river-oop-bet-or-check/e79981f9d62d",
+        "iterations": 200,
+        "perturbations": {
+          "iterations x2": {
+            "hash_changed": true,
+            "provenance_hash_matches_spot": true,
+            "strategy_change": 0.013008746831371876,
+            "action_value_change": 1.2380741526690926,
+            "output_changed": true
+          },
+          "pot x1.5": {
+            "hash_changed": true,
+            "provenance_hash_matches_spot": true,
+            "strategy_change": 0.045129943031945174,
+            "action_value_change": 28.575674845890056,
+            "output_changed": true
+          },
+          "bet size": {
+            "hash_changed": true,
+            "provenance_hash_matches_spot": true,
+            "strategy_change": 0.9461141534424908,
+            "action_value_change": 56.82544803090462,
+            "output_changed": true
+          },
+          "villain range weight": {
+            "hash_changed": true,
+            "provenance_hash_matches_spot": true,
+            "strategy_change": 0.09462629713962545,
+            "action_value_change": 5.059659785804584,
+            "output_changed": true
+          },
+          "stack 40 -> 400 (allstreet)": {
+            "hash_changed": true,
+            "provenance_hash_matches_spot": true,
+            "strategy_change": 0.05706328948247463,
+            "action_value_change": 62.17477393946319,
+            "output_changed": true
+          }
+        },
+        "note": "river stack is only a bet cap there, so the stack perturbation runs on an allstreet flop spot where it binds"
+      },
+      "wall_time_s": 12.252382018137723
+    },
+    {
+      "id": "C10-score-crosscheck",
+      "title": "Practice Q/strategy/score/grade vs independent recomputation",
+      "verdict": "PASS",
+      "thresholds": {
+        "requirement": "practice Q / strategy / pot / score / grade == independent recomputation",
+        "pass_abs_error": 1e-09,
+        "partial_abs_error": 1e-06,
+        "score_formula": "100*max(0, 1-(best_q-chosen_q)/(best_q-worst_q))",
+        "grade_bounds_pct_pot": [
+          0.25,
+          1.0,
+          3.0,
+          8.0
+        ]
+      },
+      "evidence": {
+        "spots": [
+          {
+            "family": "kuhn-intro",
+            "spot_id": "kuhn-intro/820b58289136",
+            "legal_match": true,
+            "q_abs_error": 0.0,
+            "strategy_abs_error": 0.0,
+            "pot_abs_error": 0.0,
+            "score_abs_error": 0.0,
+            "grades_match": true,
+            "error": null
+          },
+          {
+            "family": "kuhn-intro",
+            "spot_id": "kuhn-intro/917ebff3aaea",
+            "legal_match": true,
+            "q_abs_error": 0.0,
+            "strategy_abs_error": 0.0,
+            "pot_abs_error": 0.0,
+            "score_abs_error": 0.0,
+            "grades_match": true,
+            "error": null
+          },
+          {
+            "family": "kuhn-intro",
+            "spot_id": "kuhn-intro/e2b61aafe517",
+            "legal_match": true,
+            "q_abs_error": 0.0,
+            "strategy_abs_error": 0.0,
+            "pot_abs_error": 0.0,
+            "score_abs_error": 0.0,
+            "grades_match": true,
+            "error": null
+          },
+          {
+            "family": "kuhn-intro",
+            "spot_id": "kuhn-intro/51f7579c8132",
+            "legal_match": true,
+            "q_abs_error": 0.0,
+            "strategy_abs_error": 0.0,
+            "pot_abs_error": 0.0,
+            "score_abs_error": 0.0,
+            "grades_match": true,
+            "error": null
+          },
+          {
+            "family": "kuhn-intro",
+            "spot_id": "kuhn-intro/73be002c0e53",
+            "legal_match": true,
+            "q_abs_error": 0.0,
+            "strategy_abs_error": 0.0,
+            "pot_abs_error": 0.0,
+            "score_abs_error": 0.0,
+            "grades_match": true,
+            "error": null
+          },
+          {
+            "family": "kuhn-intro",
+            "spot_id": "kuhn-intro/bce19cbf83dc",
+            "legal_match": true,
+            "q_abs_error": 0.0,
+            "strategy_abs_error": 0.0,
+            "pot_abs_error": 0.0,
+            "score_abs_error": 0.0,
+            "grades_match": true,
+            "error": null
+          },
+          {
+            "family": "kuhn-intro",
+            "spot_id": "kuhn-intro/105d1efb82cd",
+            "legal_match": true,
+            "q_abs_error": 0.0,
+            "strategy_abs_error": 0.0,
+            "pot_abs_error": 0.0,
+            "score_abs_error": 0.0,
+            "grades_match": true,
+            "error": null
+          },
+          {
+            "family": "kuhn-intro",
+            "spot_id": "kuhn-intro/ba3e63844dda",
+            "legal_match": true,
+            "q_abs_error": 0.0,
+            "strategy_abs_error": 0.0,
+            "pot_abs_error": 0.0,
+            "score_abs_error": 0.0,
+            "grades_match": true,
+            "error": null
+          },
+          {
+            "family": "kuhn-intro",
+            "spot_id": "kuhn-intro/5b20e8517548",
+            "legal_match": true,
+            "q_abs_error": 0.0,
+            "strategy_abs_error": 0.0,
+            "pot_abs_error": 0.0,
+            "score_abs_error": 0.0,
+            "grades_match": true,
+            "error": null
+          },
+          {
+            "family": "kuhn-intro",
+            "spot_id": "kuhn-intro/560c4d7c6d57",
+            "legal_match": true,
+            "q_abs_error": 0.0,
+            "strategy_abs_error": 0.0,
+            "pot_abs_error": 0.0,
+            "score_abs_error": 0.0,
+            "grades_match": true,
+            "error": null
+          },
+          {
+            "family": "kuhn-intro",
+            "spot_id": "kuhn-intro/6965f880fce7",
+            "legal_match": true,
+            "q_abs_error": 0.0,
+            "strategy_abs_error": 0.0,
+            "pot_abs_error": 0.0,
+            "score_abs_error": 0.0,
+            "grades_match": true,
+            "error": null
+          },
+          {
+            "family": "kuhn-intro",
+            "spot_id": "kuhn-intro/faf9c4efee91",
+            "legal_match": true,
+            "q_abs_error": 0.0,
+            "strategy_abs_error": 0.0,
+            "pot_abs_error": 0.0,
+            "score_abs_error": 0.0,
+            "grades_match": true,
+            "error": null
+          },
+          {
+            "family": "river-oop-bet-or-check",
+            "spot_id": "river-oop-bet-or-check/e79981f9d62d",
+            "legal_match": true,
+            "q_abs_error": 0.0,
+            "strategy_abs_error": 0.0,
+            "pot_abs_error": 0.0,
+            "score_abs_error": 0.0,
+            "grades_match": true,
+            "error": null
+          },
+          {
+            "family": "river-ip-facing-bet",
+            "spot_id": "river-ip-facing-bet/5f165e73c53c",
+            "legal_match": true,
+            "q_abs_error": 0.0,
+            "strategy_abs_error": 0.0,
+            "pot_abs_error": 0.0,
+            "score_abs_error": 0.0,
+            "grades_match": true,
+            "error": null
+          },
+          {
+            "family": "preflop-hu-open",
+            "spot_id": "preflop-hu-open/6db0bd5d4d67",
+            "legal_match": true,
+            "q_abs_error": 0.0,
+            "strategy_abs_error": 0.0,
+            "pot_abs_error": 0.0,
+            "score_abs_error": 0.0,
+            "grades_match": true,
+            "error": null
+          },
+          {
+            "family": "preflop-3max-open",
+            "spot_id": "preflop-3max-open/a4b66447a35b",
+            "legal_match": true,
+            "q_abs_error": 0.0,
+            "strategy_abs_error": 0.0,
+            "pot_abs_error": 0.0,
+            "score_abs_error": 0.0,
+            "grades_match": true,
+            "error": null
+          },
+          {
+            "family": "flop-cbet",
+            "spot_id": "flop-cbet/9a471ac7b613",
+            "legal_match": true,
+            "q_abs_error": 0.0,
+            "strategy_abs_error": 0.0,
+            "pot_abs_error": 0.0,
+            "score_abs_error": 0.0,
+            "grades_match": true,
+            "error": null
+          },
+          {
+            "family": "turn-barrel",
+            "spot_id": "turn-barrel/b95c7dba968a",
+            "legal_match": true,
+            "q_abs_error": 0.0,
+            "strategy_abs_error": 0.0,
+            "pot_abs_error": 0.0,
+            "score_abs_error": 0.0,
+            "grades_match": true,
+            "error": null
+          }
+        ],
+        "max_abs_error": 0.0,
+        "plays_checked": 58
+      },
+      "wall_time_s": 75.29440678982064
+    },
+    {
+      "id": "C11-practice-solve-quality",
+      "title": "Exploitability of practice families at default solve",
+      "verdict": "FAIL",
+      "thresholds": {
+        "metric": "exploitability % of starting pot = 100 * (NashConv / n_players) / spot.pot at the family default solve (NashConv from the independent oracle)",
+        "pass_pct_pot": 1.0,
+        "partial_pct_pot": 5.0
+      },
+      "evidence": {
+        "exploitability_pct_pot": {
+          "kuhn-intro": 0.8652775063858094,
+          "river-oop-bet-or-check": 0.2542917954938879,
+          "river-ip-facing-bet": 0.8679899441525194,
+          "preflop-hu-open": 0.3395966535641448,
+          "preflop-3max-open": 7.178557716186867,
+          "flop-cbet": 1.1219704857746216,
+          "turn-barrel": 0.5798621135646762
+        },
+        "per_family_verdict": {
+          "kuhn-intro": "PASS",
+          "river-oop-bet-or-check": "PASS",
+          "river-ip-facing-bet": "PASS",
+          "preflop-hu-open": "PASS",
+          "preflop-3max-open": "FAIL",
+          "flop-cbet": "PARTIAL",
+          "turn-barrel": "PASS"
+        }
+      },
+      "wall_time_s": 2.5169923901557922e-05
+    },
+    {
+      "id": "C12-practice-timing",
+      "title": "Cold solve time of practice families at default solve",
+      "verdict": "PASS",
+      "thresholds": {
+        "metric": "cold SolverAdapter.solve wall time at the family default (empty cache)",
+        "pass_seconds": 20.0,
+        "partial_seconds": 90.0,
+        "source": "W4 CONTRACT cold budget 20 s; server timeout 90 s"
+      },
+      "evidence": {
+        "cold_solve_seconds": {
+          "kuhn-intro": 0.5607821941375732,
+          "river-oop-bet-or-check": 4.467350699938834,
+          "river-ip-facing-bet": 1.8929588971659541,
+          "preflop-hu-open": 2.615009614266455,
+          "preflop-3max-open": 9.750755780842155,
+          "flop-cbet": 11.760988880880177,
+          "turn-barrel": 3.663170368410647
+        },
+        "per_family_verdict": {
+          "kuhn-intro": "PASS",
+          "river-oop-bet-or-check": "PASS",
+          "river-ip-facing-bet": "PASS",
+          "preflop-hu-open": "PASS",
+          "preflop-3max-open": "PASS",
+          "flop-cbet": "PASS",
+          "turn-barrel": "PASS"
+        },
+        "solve_params": {
+          "kuhn-intro": {
+            "algorithm": "vanilla-cfr",
+            "iterations": 200,
+            "seed": null
+          },
+          "river-oop-bet-or-check": {
+            "algorithm": "vanilla-cfr",
+            "iterations": 200,
+            "seed": null
+          },
+          "river-ip-facing-bet": {
+            "algorithm": "vanilla-cfr",
+            "iterations": 200,
+            "seed": null
+          },
+          "preflop-hu-open": {
+            "algorithm": "vanilla-cfr",
+            "iterations": 300,
+            "seed": null
+          },
+          "preflop-3max-open": {
+            "algorithm": "vanilla-cfr",
+            "iterations": 100,
+            "seed": null
+          },
+          "flop-cbet": {
+            "algorithm": "vanilla-cfr",
+            "iterations": 200,
+            "seed": null
+          },
+          "turn-barrel": {
+            "algorithm": "vanilla-cfr",
+            "iterations": 200,
+            "seed": null
+          }
+        }
+      },
+      "wall_time_s": 4.6729110181331635e-05
+    },
+    {
+      "id": "C13-equity-icm",
+      "title": "Exact equity and ICM vs hand-derived / enumerated references",
+      "verdict": "PASS",
+      "thresholds": {
+        "requirement": "exact equity == hand-derived win/tie/loss counts; ICM == Malmuth-Harville finishing-order enumeration",
+        "icm_abs_error": 1e-09
+      },
+      "evidence": {
+        "checks": {
+          "equity AhKh vs QsQc on 2h7h9cJd = 15/0/29": {
+            "got": [
+              15,
+              0,
+              29
+            ],
+            "ok": true
+          },
+          "equity royal-flush board = 1 tie": {
+            "got": [
+              0,
+              1,
+              0
+            ],
+            "ok": true
+          },
+          "ICM == Malmuth-Harville enumeration": {
+            "cases": 7,
+            "max_abs_error": 7.815970093361102e-14,
+            "ok": true
+          }
+        }
+      },
+      "wall_time_s": 0.0051786890253424644
+    },
+    {
+      "id": "C14-scale",
+      "title": "Scaling to realistic range sizes (measured + projection)",
+      "verdict": "FAIL",
+      "thresholds": {
+        "metric": "projected seconds for 1000 vanilla-CFR iterations on a single-bet-size river with 100 combos per side (power-law fit of s/iteration vs deals; a LOWER bound for realistic multi-size trees)",
+        "pass_seconds": 60.0,
+        "partial_seconds": 3600.0
+      },
+      "evidence": {
+        "rows": [
+          {
+            "combos_per_side": 2,
+            "deals": 4,
+            "infosets": 8,
+            "build_s": 0.00031307898461818695,
+            "iterations_timed": 5,
+            "seconds_per_iteration": 0.00402898695319891
+          },
+          {
+            "combos_per_side": 4,
+            "deals": 14,
+            "infosets": 16,
+            "build_s": 0.0033747758716344833,
+            "iterations_timed": 5,
+            "seconds_per_iteration": 0.01138790398836136
+          },
+          {
+            "combos_per_side": 8,
+            "deals": 61,
+            "infosets": 32,
+            "build_s": 0.02069320296868682,
+            "iterations_timed": 5,
+            "seconds_per_iteration": 0.08630761103704572
+          },
+          {
+            "combos_per_side": 16,
+            "deals": 235,
+            "infosets": 64,
+            "build_s": 0.17350603127852082,
+            "iterations_timed": 5,
+            "seconds_per_iteration": 0.4289897488430142
+          },
+          {
+            "combos_per_side": 32,
+            "deals": 918,
+            "infosets": 128,
+            "build_s": 3.0115112336352468,
+            "iterations_timed": 5,
+            "seconds_per_iteration": 7.132891049422324
+          },
+          {
+            "combos_per_side": 48,
+            "deals": 2113,
+            "infosets": 192,
+            "build_s": 12.694613019004464,
+            "iterations_timed": 2,
+            "seconds_per_iteration": 29.318937952630222
+          }
+        ],
+        "loglog_slope_time_vs_deals": 1.4387115474971244,
+        "exponent_used": 1.4387115474971244,
+        "target_combos_per_side": 100,
+        "target_deals": 9171.006944444443,
+        "projected_seconds_per_iteration": 242.2992443412341,
+        "target_measured_directly": false,
+        "projected_seconds_1000_iterations": 242299.2443412341,
+        "note": "single bet size, river only; real multi-size / multi-street trees are larger"
+      },
+      "wall_time_s": 112.87801687605679
+    },
+    {
+      "id": "C15-all-in",
+      "title": "All-in edge case: tree structure, zero-sum, convergence",
+      "verdict": "PARTIAL",
+      "thresholds": {
+        "requirement": "all-in-only wager tree: zero-sum terminals, all-in showdowns reached, NashConv decreases; no RAISE whose target equals the CALL target and no decision node for a seat with 0 chips behind",
+        "partial": "value checks pass and the structural defect is value-neutral (gap <= 1e-9)"
+      },
+      "evidence": {
+        "checks": {
+          "all-in tree zero-sum, reaches all-in showdowns, converges": {
+            "terminals": 96,
+            "max_abs_sum": 0.0,
+            "allin_showdowns": 64,
+            "nash_conv_10": 19.307115974221478,
+            "nash_conv_160": 6.007912582846977,
+            "ok": true
+          },
+          "no degenerate RAISE==CALL facing all-in / no decisions for all-in seats": {
+            "degenerate_raise_actions": 24,
+            "allin_seat_decision_nodes": 48,
+            "max_value_gap_call_vs_degenerate_raise": 0.0,
+            "value_neutral": true,
+            "ok": false,
+            "defect": "multistreet.MultiStreetState.legal_actions offers RAISE(target==call target) when the all-in shove target equals the call amount; the all-in players then get CHECK-only decision nodes. Value-neutral (gap above) but bloats the tree and lets practice users pick a 'raise' that is a call."
+          }
+        }
+      },
+      "wall_time_s": 0.6200424660928547
+    },
+    {
+      "id": "C16-mixed-strategy",
+      "title": "Strictly mixed equilibria reproduced where theory requires",
+      "verdict": "PASS",
+      "thresholds": {
+        "requirement": "where theory requires a strictly mixed equilibrium action (Kuhn P1 J-bluff and Q-call = 1/3; river-toy air bet = B/(P+B)) the solver's mix lies strictly inside",
+        "mixed_band": [
+          0.05,
+          0.95
+        ]
+      },
+      "evidence": {
+        "checks": {
+          "kuhn p1 J bluff strictly mixed": {
+            "value": 0.334544727531795,
+            "ok": true
+          },
+          "kuhn p1 Q call strictly mixed": {
+            "value": 0.33928463036725276,
+            "ok": true
+          },
+          "river toy B=5 air bet strictly mixed": {
+            "value": 0.33861808801026105,
+            "ok": true
+          },
+          "river toy B=10 air bet strictly mixed": {
+            "value": 0.5035868663889694,
+            "ok": true
+          },
+          "river toy B=20 air bet strictly mixed": {
+            "value": 0.6517041253549121,
+            "ok": true
+          }
+        }
+      },
+      "wall_time_s": 1.5039928257465363e-05
+    }
+  ],
+  "capabilities": [
+    {
+      "capability": "2-player NL",
+      "verdict": "FAIL",
+      "scope_cap": "PARTIAL",
+      "evidence": {
+        "C3-river-closed-form": "PASS",
+        "C4-sizing-menu": "PASS",
+        "C5-convergence-river": "PASS",
+        "C5-convergence-flop": "PASS",
+        "C5-convergence-turn": "PASS",
+        "C5-convergence-preflop-hu": "PASS",
+        "C6-br-oracle-agreement": "PASS",
+        "C10-score-crosscheck": "PASS",
+        "C14-scale": "FAIL",
+        "C15-all-in": "PARTIAL",
+        "C11-practice-solve-quality[river-oop-bet-or-check]": "PASS",
+        "C11-practice-solve-quality[river-ip-facing-bet]": "PASS",
+        "C11-practice-solve-quality[preflop-hu-open]": "PASS",
+        "C11-practice-solve-quality[flop-cbet]": "PARTIAL",
+        "C11-practice-solve-quality[turn-barrel]": "PASS"
+      },
+      "not_measured_in_this_mode": [],
+      "gaps": [
+        "bounded abstraction only: fixed wager menus, explicit tiny ranges (<= ~5 combos/side in the catalog), enumerated runout subsets; no full-range NLHE solve",
+        "C14-scale is FAIL",
+        "C15-all-in is PARTIAL",
+        "C11-practice-solve-quality[flop-cbet] is PARTIAL"
+      ]
+    },
+    {
+      "capability": "3-max",
+      "verdict": "FAIL",
+      "scope_cap": "PARTIAL",
+      "evidence": {
+        "C5-convergence-preflop-3p": "PASS",
+        "C6-br-oracle-agreement": "PASS",
+        "C7-kuhn3-analytic": "PASS",
+        "C11-practice-solve-quality[preflop-3max-open]": "FAIL",
+        "C12-practice-timing[preflop-3max-open]": "PASS"
+      },
+      "not_measured_in_this_mode": [],
+      "gaps": [
+        "3-way only preflop (open/fold/call/jam trees, sampled-equity continuation); no multi-street 3-way postflop in practice; the adapter reports nash_conv=None for 3-max",
+        "C11-practice-solve-quality[preflop-3max-open] is FAIL"
+      ]
+    },
+    {
+      "capability": "preflop",
+      "verdict": "FAIL",
+      "scope_cap": "PARTIAL",
+      "evidence": {
+        "C5-convergence-preflop-hu": "PASS",
+        "C5-convergence-preflop-3p": "PASS",
+        "C11-practice-solve-quality[preflop-hu-open]": "PASS",
+        "C11-practice-solve-quality[preflop-3max-open]": "FAIL",
+        "C12-practice-timing[preflop-hu-open]": "PASS",
+        "C12-practice-timing[preflop-3max-open]": "PASS"
+      },
+      "not_measured_in_this_mode": [],
+      "gaps": [
+        "preflop leaves are settled by sampled-board showdown equity (no postflop play), tiny ranges",
+        "C11-practice-solve-quality[preflop-3max-open] is FAIL"
+      ]
+    },
+    {
+      "capability": "postflop",
+      "verdict": "FAIL",
+      "scope_cap": "PARTIAL",
+      "evidence": {
+        "C3-river-closed-form": "PASS",
+        "C5-convergence-river": "PASS",
+        "C5-convergence-flop": "PASS",
+        "C5-convergence-turn": "PASS",
+        "C10-score-crosscheck": "PASS",
+        "C14-scale": "FAIL",
+        "C11-practice-solve-quality[river-oop-bet-or-check]": "PASS",
+        "C11-practice-solve-quality[river-ip-facing-bet]": "PASS",
+        "C11-practice-solve-quality[flop-cbet]": "PARTIAL",
+        "C11-practice-solve-quality[turn-barrel]": "PASS",
+        "C12-practice-timing[river-oop-bet-or-check]": "PASS",
+        "C12-practice-timing[river-ip-facing-bet]": "PASS",
+        "C12-practice-timing[flop-cbet]": "PASS",
+        "C12-practice-timing[turn-barrel]": "PASS"
+      },
+      "not_measured_in_this_mode": [],
+      "gaps": [
+        "single wager size per spot in the catalog, <= 4 enumerated runouts, tiny ranges",
+        "C14-scale is FAIL",
+        "C11-practice-solve-quality[flop-cbet] is PARTIAL"
+      ]
+    },
+    {
+      "capability": "multi-street",
+      "verdict": "PARTIAL",
+      "scope_cap": "PARTIAL",
+      "evidence": {
+        "C5-convergence-flop": "PASS",
+        "C5-convergence-turn": "PASS",
+        "C11-practice-solve-quality[flop-cbet]": "PARTIAL",
+        "C11-practice-solve-quality[turn-barrel]": "PASS",
+        "C12-practice-timing[flop-cbet]": "PASS",
+        "C12-practice-timing[turn-barrel]": "PASS"
+      },
+      "not_measured_in_this_mode": [],
+      "gaps": [
+        "flop->river and turn->river only over an explicit runout subset (not all 49x48 runouts)",
+        "C11-practice-solve-quality[flop-cbet] is PARTIAL"
+      ]
+    },
+    {
+      "capability": "ICM",
+      "verdict": "PARTIAL",
+      "scope_cap": "PARTIAL",
+      "evidence": {
+        "C13-equity-icm": "PASS"
+      },
+      "not_measured_in_this_mode": [],
+      "gaps": [
+        "icm.calculate_icm_equity is an evaluator only; no ICM-aware solve path in the solver facades or practice mode"
+      ]
+    },
+    {
+      "capability": "mixed strategy",
+      "verdict": "PASS",
+      "scope_cap": "PASS",
+      "evidence": {
+        "C1-kuhn-analytic": "PASS",
+        "C3-river-closed-form": "PASS",
+        "C16-mixed-strategy": "PASS"
+      },
+      "not_measured_in_this_mode": [],
+      "gaps": []
+    },
+    {
+      "capability": "sizing",
+      "verdict": "PARTIAL",
+      "scope_cap": "PARTIAL",
+      "evidence": {
+        "C4-sizing-menu": "PASS",
+        "C9-param-sensitivity": "PASS"
+      },
+      "not_measured_in_this_mode": [],
+      "gaps": [
+        "fixed menus; practice spots expose one size; off-tree user sizes are snapped, never solved"
+      ]
+    }
+  ],
+  "correctness_verdict": "PARTIAL",
+  "overall": "FAIL"
+}

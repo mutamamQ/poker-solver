@@ -1,4 +1,4 @@
-updated=2026-10-05T03:29:27Z
-wave=W4-implementation (dispatching 5 subagents)
-waiting_on=W4 A-E bryant-opus-55
-next=integrate W4, full suite, commit+tag practice-mode-w4, push; then W5 audit+docs
+updated=2026-10-05T03:33:05Z
+wave=W4-implementation
+waiting_on=deleg_cba2c6e1 (5x bryant-opus-55: A families, B disk cache, C progress, D UI, E solver-eval)
+next=integrate W4, full suite, commit+tag practice-mode-w4, push; then W5 audit (non-author) + docs

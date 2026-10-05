@@ -37,7 +37,8 @@ def _solve(iterations):
 
 def test_operations_set():
     assert PRACTICE_OPERATIONS == frozenset(
-        {"practice-list-spots", "practice-solve-spot", "practice-submit-play"})
+        {"practice-list-spots", "practice-solve-spot", "practice-submit-play",
+         "practice-progress", "practice-leaderboard"})  # W4 contract additions
 
 
 def test_list_envelope_json_safe(listing):
@@ -64,7 +65,7 @@ def test_solve_and_submit_json_safe(kuhn_spot):
                           {"spot_id": sid, "play": action, "solve": _solve(50),
                            "user": "tester"})
     _strict(sub)
-    assert set(sub["result"]) == {"user", "score", "solved"}
+    assert set(sub["result"]) == {"user", "score", "solved", "progress"}  # W4: + progress
     assert sub["result"]["user"] == "tester"
     assert sub["provenance"] == solved["provenance"]
     assert sub["result"]["score"]["provenance"] == sub["provenance"]

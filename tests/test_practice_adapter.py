@@ -104,7 +104,8 @@ def test_river_oop_and_ip_solve():
 def test_allstreet_flop_route():
     solved = SolverAdapter().solve(allstreet_spot())
     check_solved(solved)
-    assert solved.provenance.entrypoint == "poker_solver.allstreet.solve_allstreet_postflop"
+    # W4: same solve_allstreet_postflop pipeline over a memoized root (equality checked in test_practice_families)
+    assert solved.provenance.entrypoint.startswith("poker_solver.allstreet.create_allstreet_root+cfr.CFRSolver.train")
     assert solved.pot_at_decision == 100.0
 
 
@@ -223,4 +224,5 @@ def test_solved_spot_validation():
 
 
 def test_module_entrypoints_declared():
-    assert set(adapter_module.ENTRYPOINTS) == {"kuhn", "river", "allstreet"}
+    # W4: + nplayer-preflop (heads-up / 3-max) and multistreet (turn)
+    assert set(adapter_module.ENTRYPOINTS) == {"kuhn", "river", "allstreet", "nplayer-preflop", "multistreet"}

@@ -1077,3 +1077,141 @@ div.range-table .range-row { grid-template-columns: 96px minmax(120px, 1fr) minm
 @media (max-width: 900px) { .topbar { position: static; } }
 @media (max-width: 1100px) { .topbar { position: static; } .sidebar { top: 0; max-height: 100vh; } }
 @media (min-width: 1101px) { :root { --topbar-h: 60px; } .topbar { box-sizing: border-box; height: var(--topbar-h); flex-wrap: nowrap; } }
+
+
+/* ==========================================================================
+   W4: filters, 3-max seats, solving state, progress + leaderboard panels
+   ========================================================================== */
+.filter-group { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.filter-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.filter-field select { width: 100%; min-width: 0; }
+@media (max-width: 900px) and (min-width: 561px) {
+  .filter-group { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.topbar-field { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+#user-input { width: 150px; max-width: 100%; }
+#user-input[aria-invalid="true"] { border-color: var(--danger-border); box-shadow: 0 0 0 3px var(--danger-bg); }
+.user-hint { color: var(--danger-text); font-size: 0.78rem; }
+
+/* Spot list extras */
+.spot-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.spot-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.spot-tag {
+  padding: 0 7px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-strong);
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.6;
+  text-transform: lowercase;
+}
+.spot-tag.game-3-max { color: #f5b45a; border-color: rgba(245, 180, 90, 0.45); }
+.best-badge {
+  --g: var(--accent-text);
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 0.68rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--g);
+  background: rgba(124, 92, 255, 0.12);
+  border: 1px solid rgba(124, 92, 255, 0.4);
+}
+.best-badge.grade-perfect, .best-badge.grade-good, .best-badge.grade-inaccuracy,
+.best-badge.grade-mistake, .best-badge.grade-blunder {
+  background: color-mix(in srgb, var(--g) 14%, transparent);
+  border-color: color-mix(in srgb, var(--g) 45%, transparent);
+}
+.family-badge[data-family^="preflop"] { --fam: #9fd36b; }
+
+/* 3-max / multiway seats: villains spread across the top rail */
+.table-felt.players-3 .seat.villain-left { left: 26%; }
+.table-felt.players-3 .seat.villain-right { left: 74%; }
+.table-felt.players-3 .seat.villain { min-width: 0; }
+.table-felt.players-many .seat.extra-villain { position: static; transform: none; }
+@media (max-width: 900px) and (min-width: 561px) {
+  .table-felt.players-3 .seat.villain-left { left: 24%; }
+  .table-felt.players-3 .seat.villain-right { left: 76%; }
+  .table-felt.players-3 .seat.villain { font-size: 0.76rem; padding: 5px 8px; gap: 6px; }
+  .table-felt.players-3 .seat.villain .card { --card-w: 30px; --card-h: 42px; }
+}
+@media (max-width: 560px) {
+  .table-felt.players-3 .seat.villain { position: static; transform: none; }
+}
+.seat.extra-villain .seat-cards, #seat-villain .seat-cards { display: flex; gap: 4px; }
+
+/* Long-solve state */
+.solve-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  border: 1px solid rgba(124, 92, 255, 0.45);
+  color: var(--accent-text);
+  font-size: 0.8rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.spot-header { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+.solving-inline { color: var(--muted); font-variant-numeric: tabular-nums; padding: 12px 0; }
+#practice-app[aria-busy="true"] #submit-play { cursor: progress; }
+
+/* Progress + leaderboard */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: 16px;
+  min-width: 0;
+}
+.stats-panel { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.panel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.panel-head .panel-title { margin: 0; }
+.panel-sub { color: var(--accent-text); text-transform: none; letter-spacing: 0; font-weight: 600; overflow-wrap: anywhere; }
+.small-btn { min-height: 28px; padding: 3px 10px; font-size: 0.78rem; }
+.panel-status { color: var(--muted); font-size: 0.82rem; }
+.panel-status.unavailable {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--border-strong);
+  color: var(--muted);
+}
+.totals-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+.total-cell {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  min-width: 0;
+}
+.total-key { margin: 0; color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.total-val { margin: 0; color: var(--text-strong); font-size: 1.1rem; font-weight: 750; font-variant-numeric: tabular-nums; }
+@media (max-width: 560px) { .totals-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.table-wrap { overflow-x: auto; max-height: 360px; overflow-y: auto; min-width: 0; }
+.table-wrap table.data { font-size: 0.8rem; }
+.table-wrap table.data th { position: sticky; top: 0; background: var(--panel); z-index: 1; }
+table.data td.num, table.data th.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.data .cell-spot { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+table.data .cell-muted { color: var(--muted); white-space: nowrap; }
+table.data .cell-best { color: var(--text-strong); font-weight: 700; }
+table.data tr.current td, table.data tr.me td { background: var(--accent-soft); }
+table.data tr.me .cell-user { color: var(--accent-text); font-weight: 700; }
+.grade-badge.grade-sm { padding: 1px 7px; font-size: 0.66rem; }
+/* 3-max: villains occupy both top corners, so stacks move into the felt's flow */
+.table-felt.players-3 .stacks, .table-felt.players-many .stacks {
+  position: static; flex-direction: row; flex-wrap: wrap; justify-content: center;
+}
+.table-felt.players-3, .table-felt.players-many { padding-bottom: 84px; }
+@media (max-width: 560px) { .table-felt.players-3, .table-felt.players-many { padding-bottom: 14px; } }
+.table-felt.players-3, .table-felt.players-many { margin-top: 34px; }
+@media (max-width: 560px) { .table-felt.players-3, .table-felt.players-many { margin-top: 8px; } }

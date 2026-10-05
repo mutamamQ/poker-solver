@@ -1,39 +1,263 @@
 """Solver adapter: turn a :class:`PracticeSpot` into a runtime solve and a :class:`SolvedSpot`.
 
 Every probability and action value returned here is computed by the real solver
-(``cfr.CFRSolver`` / ``allstreet.solve_allstreet_postflop``) when the spot is
-solved, or read back from an in-memory cache keyed by the spot's full
-``params_hash``.  Nothing is hardcoded and nothing is post-edited.
+(``cfr.CFRSolver`` / the ``allstreet.solve_allstreet_postflop`` pipeline /
+``nplayer.NPlayerCFRSolver`` over ``nplayer_preflop`` / ``cfr.CFRSolver`` over a
+``multistreet`` turn root) when the spot is solved, or read back from a cache keyed
+by the spot's full ``params_hash``.  Nothing is hardcoded and nothing is post-edited.
+
+Preflop leaves that reach a showdown are valued by a runtime equity table: for each
+compatible private deal, ``equity_samples`` boards are drawn with a seed derived
+(sha256) from the deal itself and evaluated with ``evaluator.evaluate_seven``; the
+table is then supplied to the solver as a ``terminal-table`` continuation.
 """
 
 from __future__ import annotations
 
+import hashlib
+import json
+import random
 import threading
 import time
-from dataclasses import dataclass
+from collections import Counter
+from dataclasses import dataclass, fields, is_dataclass
+from fractions import Fraction
 from importlib import metadata
 from types import MappingProxyType
-from typing import Any, Callable, Hashable, MutableMapping
+from typing import Any, Callable, Hashable, Mapping, MutableMapping
 
-from ..allstreet import AllStreetPostflopConfig, create_allstreet_root, solve_allstreet_postflop
+from ..allstreet import AllStreetPostflopConfig, create_allstreet_root
+from ..api import complete_strategy
+from ..mccfr import MCCFRSolver
 from ..best_response import nash_conv
+from ..bounded_tree import validate_bounded_tree
 from ..cfr import CFRSolver
+from ..evaluator import evaluate_seven
+from ..game_structure import ForcedPost, award_pot_layers, build_pot_layers
 from ..kuhn import kuhn_root
 from ..model import CHANCE, TERMINAL, Action, GameState, Strategy
+from ..multistreet import MultiStreetConfig, create_root as create_multistreet_root
+from ..nplayer import NPlayerCFRSolver
+from ..nplayer_preflop import (
+    NPlayerPreflopConfig,
+    NPlayerPreflopContinuation,
+    NPlayerPreflopSizingRule,
+    create_nplayer_preflop_root,
+    enumerate_nplayer_preflop_deals,
+)
+from ..preflop import WeightedCombo as PreflopCombo
 from ..river import RiverConfig, river_root
 from .evaluate import action_values
-from .models import PracticeSpot, SolvedSpot, SolveProvenance, format_hand
+from .models import PREFLOP_BLINDS, PREFLOP_POSITIONS, PracticeSpot, SolvedSpot, SolveProvenance, format_hand
 
-__all__ = ["SolverAdapter", "solve_spot", "solver_version", "locate_decision", "HeroDecision", "ENTRYPOINTS"]
+__all__ = [
+    "SolverAdapter",
+    "solve_spot",
+    "solver_version",
+    "locate_decision",
+    "HeroDecision",
+    "ENTRYPOINTS",
+    "CachedState",
+    "portable_key",
+    "preflop_config",
+]
 
 ENTRYPOINTS = MappingProxyType(
     {
         "kuhn": "poker_solver.kuhn.kuhn_root+cfr.CFRSolver.train",
         "river": "poker_solver.river.river_root+cfr.CFRSolver.train",
-        "allstreet": "poker_solver.allstreet.solve_allstreet_postflop",
+        "allstreet": (
+            "poker_solver.allstreet.create_allstreet_root+cfr.CFRSolver.train"
+            " (solve_allstreet_postflop pipeline: validate_bounded_tree, complete_strategy, nash_conv)"
+        ),
+        "nplayer-preflop": (
+            "poker_solver.nplayer_preflop.create_nplayer_preflop_root"
+            "+nplayer.NPlayerCFRSolver.train (terminal-table: evaluator.evaluate_seven sampled equity)"
+        ),
+        "multistreet": "poker_solver.multistreet.create_root(turn)+cfr.CFRSolver.train",
     }
 )
 _TRAIN_CHUNK = 25
+_PREFLOP_VERSION = "nplayer-preflop-v1"
+_PREFLOP_PROVENANCE = "practice runtime sampled showdown equity (evaluator.evaluate_seven)"
+_MAX_DEPTH = 512
+
+
+# --------------------------------------------------------------------------- memoized state
+
+
+class CachedState:
+    """Transparent memoizing proxy over an immutable solver ``GameState``.
+
+    The wrapped game states are frozen dataclasses whose methods are pure, so caching
+    children, legal actions, chance outcomes, infoset keys and returns changes no
+    value -- it only avoids re-deriving (and re-validating) the same immutable states
+    on every CFR iteration.  Any other attribute is delegated to the wrapped state.
+    """
+
+    __slots__ = ("state", "_player", "_children", "_actions", "_outcomes", "_keys", "_returns")
+
+    def __init__(self, state: Any):
+        self.state = state
+        self._player = state.current_player()
+        self._children: dict[Action, CachedState] = {}
+        self._actions: tuple[Action, ...] | None = None
+        self._outcomes: tuple[tuple[Action, float], ...] | None = None
+        self._keys: dict[int, Hashable] = {}
+        self._returns: tuple[float, ...] | None = None
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.state, name)
+
+    def current_player(self) -> int:
+        return self._player
+
+    def num_players(self) -> int:
+        counter = getattr(self.state, "num_players", None)
+        return 2 if counter is None else counter()
+
+    def legal_actions(self) -> tuple[Action, ...]:
+        if self._actions is None:
+            self._actions = self.state.legal_actions()
+        return self._actions
+
+    def chance_outcomes(self) -> tuple[tuple[Action, float], ...]:
+        if self._outcomes is None:
+            self._outcomes = self.state.chance_outcomes()
+        return self._outcomes
+
+    def child(self, action: Action) -> "CachedState":
+        node = self._children.get(action)
+        if node is None:
+            node = self._children[action] = CachedState(self.state.child(action))
+        return node
+
+    def information_state_key(self, player: int) -> Hashable:
+        key = self._keys.get(player)
+        if key is None:
+            key = self._keys[player] = self.state.information_state_key(player)
+        return key
+
+    def returns(self) -> tuple[float, ...]:
+        if self._returns is None:
+            self._returns = tuple(self.state.returns())
+        return self._returns
+
+
+# --------------------------------------------------------------------------- preflop game build
+
+
+def _deal_seed(deal: tuple, samples: int) -> int:
+    text = json.dumps([[list(cards) for cards in deal], samples], separators=(",", ":"))
+    return int(hashlib.sha256(text.encode("ascii")).hexdigest()[:16], 16)
+
+
+def _rank_patterns(deal: tuple, samples: int) -> Counter:
+    """Counter of per-seat hand-rank tuples over ``samples`` seeded random boards."""
+    dead = {card for cards in deal for card in cards}
+    deck = [card for card in range(52) if card not in dead]
+    rng = random.Random(_deal_seed(deal, samples))
+    patterns: Counter = Counter()
+    for _ in range(samples):
+        board = tuple(rng.sample(deck, 5))
+        ranks = tuple(evaluate_seven(tuple(cards) + board) for cards in deal)
+        order = sorted(set(ranks))
+        patterns[tuple(order.index(rank) for rank in ranks)] += 1
+    return patterns
+
+
+def _showdown_utilities(state: Any, patterns: Counter, samples: int, stacks: tuple[int, ...]) -> tuple[Fraction, ...]:
+    """Exact expected chip utilities of a closed multi-way leaf under sampled boards."""
+    n = len(stacks)
+    folded = frozenset(seat for seat, is_folded in enumerate(state.folded) if is_folded)
+    layers = build_pot_layers(state.total_contributed, folded=folded)
+    totals = [0] * n
+    for ranks, count in patterns.items():
+        winners = tuple(
+            frozenset(s for s in layer.eligible if ranks[s] == max(ranks[e] for e in layer.eligible))
+            for layer in layers
+        )
+        awards = award_pot_layers(layers, winners_by_layer=winners, odd_chip_order=tuple(range(n)))
+        awards = tuple(awards) + (0,) * (n - len(awards))
+        for seat in range(n):
+            totals[seat] += count * awards[seat]
+    values = tuple(Fraction(totals[s], samples) + state.remaining[s] - stacks[s] for s in range(n))
+    if sum(values) != 0:
+        raise ValueError("preflop showdown utilities are not zero-sum")
+    return values
+
+
+def preflop_config(spot: PracticeSpot) -> NPlayerPreflopConfig:
+    """Build the solver config for a ``nplayer-preflop`` spot (equity table computed now)."""
+    n = len(spot.stacks)
+    small, big = PREFLOP_BLINDS
+    sb, bb = (0, 1) if n == 2 else (1, 2)
+    posts = (ForcedPost(sb, "small-blind", small), ForcedPost(bb, "big-blind", big))
+    ranges = tuple(
+        tuple(PreflopCombo(c.cards, Fraction(str(c.weight))) for c in seat_range) for seat_range in spot.ranges
+    )
+    expressions = tuple({"unit": "big-blinds", "value": size / big} for size in spot.bet_sizes)
+    rules = tuple(
+        NPlayerPreflopSizingRule(position, 0, callers, "NA", expressions)
+        for position in PREFLOP_POSITIONS[spot.game_type]
+        for callers in range(n)
+    )
+    extra = spot.backend_extra
+    max_deals = 1
+    for seat_range in ranges:
+        max_deals *= len(seat_range)
+
+    def build(continuation: NPlayerPreflopContinuation) -> NPlayerPreflopConfig:
+        return NPlayerPreflopConfig(
+            version=_PREFLOP_VERSION,
+            num_players=n,
+            button=0,
+            starting_stacks=spot.stacks,
+            forced_posts=posts,
+            straddle_variant="none",
+            ranges=ranges,
+            sizing_rules=rules,
+            max_raises=extra["max_raises"],
+            max_deals=max_deals,
+            max_nodes=extra["max_nodes"],
+            short_all_in_reopens=False,
+            continuation=continuation,
+        )
+
+    # Pass 1: the betting tree does not depend on the private cards, so walking it
+    # under one representative deal yields every closed multi-way leaf (history plus
+    # settled chips).  A structural placeholder continuation is used only for this
+    # walk; settlement chip amounts do not depend on it.
+    bare = build(NPlayerPreflopContinuation("terminal-table", "structure-only", "derived", {}, {}, ()))
+    deals = tuple(deal for deal, _ in enumerate_nplayer_preflop_deals(bare))
+    placeholder = NPlayerPreflopContinuation(
+        "showdown-ranks", "structure-only", "derived", {}, {deal: (0,) * n for deal in deals}, tuple(range(n))
+    )
+    probe_root = create_nplayer_preflop_root(build(placeholder))
+    leaves: list = []
+    visited = 0
+
+    def walk(state: Any) -> None:
+        nonlocal visited
+        visited += 1
+        if visited > extra["max_nodes"]:
+            raise ValueError("preflop tree exceeds max_nodes")
+        player = state.current_player()
+        if player == TERMINAL:
+            if sum(not f for f in state.folded) > 1:
+                leaves.append(state)
+            return
+        for action in state.legal_actions():
+            walk(state.child(action))
+
+    walk(probe_root.child(probe_root.chance_outcomes()[0][0]))
+    samples = extra["equity_samples"]
+    table: dict = {}
+    for deal in deals:
+        patterns = _rank_patterns(deal, samples)
+        for leaf in leaves:
+            table[(deal, leaf.history)] = _showdown_utilities(leaf, patterns, samples, spot.stacks)
+    return build(NPlayerPreflopContinuation("terminal-table", _PREFLOP_PROVENANCE, "derived", table, {}, ()))
 
 
 def solver_version() -> str:
@@ -51,6 +275,28 @@ class HeroDecision:
     info_key: Hashable
     legal_actions: tuple[Action, ...]
     pot_at_decision: float
+
+
+# --------------------------------------------------------------------------- portable keys
+
+
+def portable_key(value: Any) -> Any:
+    """Solver infoset key re-expressed with tuples / primitives / ``Action`` only.
+
+    ``SolvedSpot.info_key`` is descriptive (lookups use the raw solver key); some
+    backends embed config dataclasses (``ForcedPost``, seat-labelled actions) in their
+    keys, which are mapped here to ``(type name, *fields)`` tuples so the solved spot
+    stays JSON-encodable for the persistent cache.
+    """
+    if value is None or isinstance(value, (bool, int, float, str, Fraction, Action)):
+        return value
+    if isinstance(value, (tuple, list)):
+        return tuple(portable_key(item) for item in value)
+    if isinstance(value, Mapping):
+        return tuple((portable_key(k), portable_key(v)) for k, v in value.items())
+    if is_dataclass(value):
+        return (type(value).__name__,) + tuple(portable_key(getattr(value, f.name)) for f in fields(value))
+    raise ValueError(f"unsupported infoset key component {type(value).__name__}")
 
 
 # --------------------------------------------------------------------------- tree walk
@@ -72,6 +318,8 @@ def _pot_at(state: Any, backend: str) -> float:
         return 2.0 + sum(1.0 for a in state.history if a.kind in ("bet", "call"))
     if backend == "river":
         return float(state.config.pot) + sum(float(a.amount) for a in state.history if a.kind == "bet")
+    if backend == "nplayer-preflop":
+        return float(state.pot)  # pot already includes current-street commitments
     return float(state.pot + sum(state.committed))
 
 
@@ -141,6 +389,8 @@ class SolverAdapter:
             "kuhn": self._solve_kuhn,
             "river": self._solve_river,
             "allstreet": self._solve_allstreet,
+            "nplayer-preflop": self._solve_preflop,
+            "multistreet": self._solve_multistreet,
         }
         handler = router.get(spot.backend)
         if handler is None:
@@ -153,10 +403,11 @@ class SolverAdapter:
 
     # -- backends --------------------------------------------------------------------
 
-    def _train_cfr(self, root: GameState, spot: PracticeSpot, start: float) -> Strategy:
+    def _train_cfr(self, root: GameState, spot: PracticeSpot, start: float, solver: Any = None) -> Strategy:
         if spot.solve.algorithm != "vanilla-cfr":
             raise ValueError(f"backend {spot.backend} supports only vanilla-cfr")
-        solver = CFRSolver(root)
+        if solver is None:
+            solver = CFRSolver(root)
         remaining = spot.solve.iterations
         profile: Strategy = {}
         while remaining > 0:
@@ -210,14 +461,63 @@ class SolverAdapter:
             max_nodes=extra["max_nodes"],
             max_depth=extra["max_depth"],
         )
-        result = solve_allstreet_postflop(
-            config, algorithm=spot.solve.algorithm, iterations=spot.solve.iterations, seed=spot.solve.seed
-        )
-        if time.perf_counter() - start > self.timeout_s:
-            raise ValueError(f"allstreet solve exceeded the {self.timeout_s:g}s budget")
-        root = create_allstreet_root(config)
+        # Same steps as ``allstreet.solve_allstreet_postflop`` (bounded-tree validation,
+        # CFRSolver / MCCFRSolver training, ``api.complete_strategy``, NashConv) run over
+        # a memoized root, which yields an identical profile in a fraction of the time.
+        root = CachedState(create_allstreet_root(config))
+        validate_bounded_tree(root, max_nodes=config.max_nodes, max_depth=config.max_depth)
+        if spot.solve.algorithm == "vanilla-cfr":
+            profile = self._train_cfr(root, spot, start)
+        else:
+            profile = MCCFRSolver(root, spot.solve.seed).train(spot.solve.iterations)
+            if time.perf_counter() - start > self.timeout_s:
+                raise ValueError(f"allstreet solve exceeded the {self.timeout_s:g}s budget")
+        profile = complete_strategy(root, profile)
+        conv = nash_conv(root, profile).nash_conv
         hands = tuple(c.cards for c in spot.ranges[spot.hero_seat])
-        return self._finish(spot, root, result.strategy, result.nash_conv, start, spot.hero_hand, hands, format_hand)
+        return self._finish(spot, root, profile, conv, start, spot.hero_hand, hands, format_hand)
+
+    def _solve_preflop(self, spot: PracticeSpot) -> SolvedSpot:
+        start = time.perf_counter()
+        config = preflop_config(spot)
+        root = CachedState(create_nplayer_preflop_root(config))
+        max_depth = 2 + config.num_players + config.max_raises * (config.num_players - 1)
+        solver = NPlayerCFRSolver(root, max_nodes=config.max_nodes, max_depth=max_depth)
+        profile = self._train_cfr(root, spot, start, solver)
+        # NashConv (two-player best responses) is defined for heads-up only; for 3-max
+        # the provenance carries None rather than an unsupported number.
+        conv = nash_conv(root, profile).nash_conv if config.num_players == 2 else None
+        decision = locate_decision(root, spot, spot.hero_hand, spot.backend)
+        if decision is not None:
+            sizes = {a.amount for a in decision.legal_actions if a.kind == "RAISE"}
+            unopened = not any(a.kind == "RAISE" for a in spot.action_history)
+            if unopened and not set(spot.bet_sizes) <= sizes:
+                raise ValueError("solver tree does not offer the declared open size")
+        hands = tuple(c.cards for c in spot.ranges[spot.hero_seat])
+        return self._finish(spot, root, profile, conv, start, spot.hero_hand, hands, format_hand)
+
+    def _solve_multistreet(self, spot: PracticeSpot) -> SolvedSpot:
+        start = time.perf_counter()
+        extra = spot.backend_extra
+        config = MultiStreetConfig(
+            version="multistreet-v1",
+            starting_street="turn",
+            starting_board=spot.board,
+            initial_dead_pot=int(spot.pot),
+            effective_stack=spot.stacks[0],
+            player0_combos=spot.ranges[0],
+            player1_combos=spot.ranges[1],
+            allowed_runouts=extra["allowed_runouts"],
+            betting_mode=extra["betting_mode"],
+            wager_targets=spot.bet_sizes,
+            river_betting=True,
+        )
+        root = CachedState(create_multistreet_root(config))
+        validate_bounded_tree(root, max_nodes=extra["max_nodes"], max_depth=extra["max_depth"])
+        profile = self._train_cfr(root, spot, start)
+        conv = nash_conv(root, profile).nash_conv
+        hands = tuple(c.cards for c in spot.ranges[spot.hero_seat])
+        return self._finish(spot, root, profile, conv, start, spot.hero_hand, hands, format_hand)
 
     # -- evaluation ------------------------------------------------------------------
 
@@ -226,7 +526,7 @@ class SolverAdapter:
         spot: PracticeSpot,
         root: GameState,
         profile: Strategy,
-        conv: float,
+        conv: float | None,
         start: float,
         hero_hand: Any,
         range_hands: tuple,
@@ -254,7 +554,7 @@ class SolverAdapter:
             algorithm=spot.solve.algorithm,
             iterations=spot.solve.iterations,
             seed=spot.solve.seed,
-            nash_conv=float(conv),
+            nash_conv=None if conv is None else float(conv),
             wall_time_s=time.perf_counter() - start,
             solver_version=solver_version(),
         )
@@ -263,7 +563,7 @@ class SolverAdapter:
             provenance=provenance,
             legal_actions=actions,
             pot_at_decision=decision.pot_at_decision,
-            info_key=decision.info_key,
+            info_key=portable_key(decision.info_key),
             strategy=strategy,
             action_values=q,
             range_strategy=range_strategy,

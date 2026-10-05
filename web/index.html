@@ -10,11 +10,12 @@
   <div id="practice-app" class="app-shell" role="application" aria-label="Poker practice mode">
     <header class="topbar">
       <h1 class="app-title">Practice</h1>
-      <label class="topbar-field" for="spot-filter">Family
-        <select id="spot-filter" aria-label="Filter spots by family">
-          <option value="">All families</option>
-        </select>
+      <label class="topbar-field" for="user-input">Player
+        <input id="user-input" type="text" maxlength="32" autocomplete="nickname" spellcheck="false"
+               placeholder="local" pattern="[A-Za-z0-9_.\-]{1,32}" aria-describedby="user-hint"
+               aria-label="Player name (letters, digits, _ . -; up to 32 characters)">
       </label>
+      <span id="user-hint" class="user-hint hidden" role="status" aria-live="polite"></span>
       <label class="topbar-field" for="iterations-input">Iterations
         <input id="iterations-input" type="number" min="1" step="1" inputmode="numeric"
                placeholder="spot default" aria-label="Solver iterations override (empty = spot default)">
@@ -25,6 +26,23 @@
 
     <aside class="sidebar panel" aria-label="Spots">
       <h2 class="panel-title">Spots</h2>
+      <div class="filter-group" role="group" aria-label="Spot filters">
+        <label class="filter-field" for="spot-filter">Family
+          <select id="spot-filter" aria-label="Filter spots by family">
+            <option value="">All families</option>
+          </select>
+        </label>
+        <label class="filter-field" for="street-filter">Street
+          <select id="street-filter" aria-label="Filter spots by street">
+            <option value="">All streets</option>
+          </select>
+        </label>
+        <label class="filter-field" for="game-filter">Game
+          <select id="game-filter" aria-label="Filter spots by game type">
+            <option value="">All game types</option>
+          </select>
+        </label>
+      </div>
       <div id="spot-status" class="loading" role="status" aria-live="polite">Loading spots…</div>
       <ul id="spot-list" aria-label="Practice spots"></ul>
     </aside>
@@ -37,9 +55,10 @@
           <h2 class="panel-title" id="spot-title">Select a spot</h2>
           <span id="spot-meta" class="spot-meta"></span>
           <span id="solve-spinner" class="spinner hidden" role="status" aria-label="Solving"></span>
+          <span id="solve-status" class="solve-status hidden" role="status" aria-live="polite"></span>
         </div>
 
-        <div class="table-felt" aria-label="Poker table">
+        <div class="table-felt" id="table-felt" aria-label="Poker table">
           <div class="seat villain" id="seat-villain">
             <div class="seat-name" id="villain-name">Villain</div>
             <div class="seat-cards"><span class="card back" aria-hidden="true"></span><span class="card back" aria-hidden="true"></span></div>
@@ -104,6 +123,27 @@
         <h3 class="panel-title">Provenance</h3>
         <div id="provenance"></div>
       </section>
+
+      <div class="stats-grid">
+        <section id="progress-panel" class="panel stats-panel" aria-label="Your progress" aria-live="polite">
+          <div class="panel-head">
+            <h2 class="panel-title">Your progress <span id="progress-user" class="panel-sub"></span></h2>
+            <button id="progress-refresh" type="button" class="small-btn" aria-label="Refresh progress">Refresh</button>
+          </div>
+          <div id="progress-status" class="panel-status" role="status">Loading progress…</div>
+          <dl id="progress-totals" class="totals-grid hidden"></dl>
+          <div id="progress-spots" class="table-wrap"></div>
+        </section>
+
+        <section id="leaderboard-panel" class="panel stats-panel" aria-label="Leaderboard" aria-live="polite">
+          <div class="panel-head">
+            <h2 class="panel-title">Leaderboard <span id="leaderboard-scope" class="panel-sub"></span></h2>
+            <button id="leaderboard-refresh" type="button" class="small-btn" aria-label="Refresh leaderboard">Refresh</button>
+          </div>
+          <div id="leaderboard-status" class="panel-status" role="status">Loading leaderboard…</div>
+          <div id="leaderboard-table" class="table-wrap"></div>
+        </section>
+      </div>
     </main>
   </div>
   <script src="/app.js"></script>

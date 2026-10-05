@@ -26,6 +26,8 @@ __all__ = [
     "GAME_TYPES",
     "STREETS",
     "KUHN_CARDS",
+    "PREFLOP_BLINDS",
+    "PREFLOP_POSITIONS",
     "SPOT_FORMAT",
     "SolveParams",
     "PracticeSpot",
@@ -38,20 +40,30 @@ __all__ = [
 
 SPOT_FORMAT = "practice-spot-v1"
 ALGORITHMS = ("vanilla-cfr", "external-sampling-mccfr")
-BACKENDS = ("kuhn", "river", "allstreet", "nplayer-preflop")
+BACKENDS = ("kuhn", "river", "allstreet", "nplayer-preflop", "multistreet")
 GAME_TYPES = ("heads-up", "3-max")
 STREETS = ("preflop", "flop", "turn", "river")
 KUHN_CARDS = ("J", "Q", "K")
 _BOARD_LEN = MappingProxyType({"preflop": 0, "flop": 3, "turn": 4, "river": 5})
 _SEATS = MappingProxyType({"heads-up": 2, "3-max": 3})
+#: backend -> (allowed game types, allowed streets)
 _BACKEND_SHAPE = MappingProxyType(
     {
-        "kuhn": ("heads-up", ("preflop",)),
-        "river": ("heads-up", ("river",)),
-        "allstreet": ("heads-up", ("flop",)),
-        "nplayer-preflop": ("3-max", ("preflop",)),
+        "kuhn": (("heads-up",), ("preflop",)),
+        "river": (("heads-up",), ("river",)),
+        "allstreet": (("heads-up",), ("flop",)),
+        "nplayer-preflop": (("heads-up", "3-max"), ("preflop",)),
+        "multistreet": (("heads-up",), ("turn",)),
     }
 )
+#: Blinds used by every ``nplayer-preflop`` spot (button = seat 0, chips).
+PREFLOP_BLINDS = (1, 2)
+#: Seat labels for button = seat 0 (matches ``nplayer_preflop`` position order).
+PREFLOP_POSITIONS = MappingProxyType({"heads-up": ("BTN/SB", "BB"), "3-max": ("BTN", "SB", "BB")})
+#: Action kinds used by the nplayer-preflop and multistreet/allstreet game states.
+_UPPER_KINDS = frozenset({"FOLD", "CHECK", "CALL", "RAISE"})
+_MAX_EQUITY_SAMPLES = 5000
+_MAX_PREFLOP_RAISES = 4
 _FAMILY_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 #: Allowed ``backend_extra`` keys: solver inputs plus descriptive generation metadata.
 EXTRA_KEYS = frozenset(
@@ -65,6 +77,8 @@ EXTRA_KEYS = frozenset(
         "spr",
         "range_shape",
         "cell_seed",
+        "max_raises",
+        "equity_samples",
     }
 )
 _KUHN_HISTORIES = MappingProxyType(
@@ -282,12 +296,12 @@ class PracticeSpot:
         _require_str(self.backend, "backend", BACKENDS)
         _require_str(self.game_type, "game_type", GAME_TYPES)
         _require_str(self.street, "street", STREETS)
-        want_game, want_streets = _BACKEND_SHAPE[self.backend]
-        if self.game_type != want_game:
-            raise ValueError(f"backend {self.backend} requires game_type {want_game}")
+        want_games, want_streets = _BACKEND_SHAPE[self.backend]
+        if self.game_type not in want_games:
+            raise ValueError(f"backend {self.backend} requires game_type in {want_games}")
         if self.street not in want_streets:
             if self.backend == "allstreet" and self.street == "turn":
-                raise ValueError("turn start unsupported by allstreet facade (PARTIAL)")
+                raise ValueError("turn start unsupported by the allstreet facade; use backend multistreet")
             raise ValueError(f"backend {self.backend} requires street in {want_streets}")
         n_seats = _SEATS[self.game_type]
 
@@ -359,7 +373,15 @@ class PracticeSpot:
             if self.backend == "river":
                 self._validate_river(sizes)
             if self.backend == "allstreet":
-                self._validate_allstreet_extra(board_set)
+                self._validate_runout_extra(board_set, 2)
+            if self.backend == "multistreet":
+                self._validate_runout_extra(board_set, 1)
+            if self.backend == "nplayer-preflop":
+                self._validate_preflop(stacks, sizes)
+            if self.backend in ("allstreet", "multistreet"):
+                for action in history:
+                    if action.kind not in _UPPER_KINDS:
+                        raise ValueError(f"{self.backend} actions must be one of {sorted(_UPPER_KINDS)}")
 
         canonical = self.canonical()
         setter(self, "_params_hash", _sha256_json(canonical))
@@ -415,11 +437,37 @@ class PracticeSpot:
         if actor != self.hero_seat:
             raise ValueError("hero is not the acting player after this river history")
 
-    def _validate_allstreet_extra(self, board: frozenset[int]) -> None:
+    def _validate_preflop(self, stacks: tuple, sizes: tuple) -> None:
+        extra = self.backend_extra
+        missing = {"max_nodes", "max_raises", "equity_samples"} - set(extra)
+        if missing:
+            raise ValueError(f"nplayer-preflop backend_extra missing {sorted(missing)}")
+        _require_int(extra["max_nodes"], "max_nodes", minimum=1)
+        raises = _require_int(extra["max_raises"], "max_raises", minimum=1)
+        if raises > _MAX_PREFLOP_RAISES:
+            raise ValueError(f"max_raises must be <= {_MAX_PREFLOP_RAISES}")
+        samples = _require_int(extra["equity_samples"], "equity_samples", minimum=1)
+        if samples > _MAX_EQUITY_SAMPLES:
+            raise ValueError(f"equity_samples must be <= {_MAX_EQUITY_SAMPLES}")
+        for key in ("allowed_runouts", "betting_mode", "max_depth"):
+            if key in extra:
+                raise ValueError(f"{key} is not a nplayer-preflop input")
+        small, big = PREFLOP_BLINDS
+        if self.pot != float(small + big):
+            raise ValueError(f"nplayer-preflop spots require pot = blinds = {small + big}")
+        if min(stacks) <= big:
+            raise ValueError("preflop stacks must exceed the big blind")
+        if sizes[0] <= big:
+            raise ValueError("preflop open sizes (raise-to chips) must exceed the big blind")
+        for action in self.action_history:
+            if action.kind not in _UPPER_KINDS:
+                raise ValueError(f"preflop actions must be one of {sorted(_UPPER_KINDS)}")
+
+    def _validate_runout_extra(self, board: frozenset[int], runout_len: int) -> None:
         extra = self.backend_extra
         missing = {"allowed_runouts", "betting_mode", "max_nodes", "max_depth"} - set(extra)
         if missing:
-            raise ValueError(f"allstreet backend_extra missing {sorted(missing)}")
+            raise ValueError(f"{self.backend} backend_extra missing {sorted(missing)}")
         if extra["betting_mode"] not in ("no-limit", "pot-limit"):
             raise ValueError("betting_mode must be 'no-limit' or 'pot-limit'")
         for key in ("max_nodes", "max_depth"):
@@ -428,13 +476,18 @@ class PracticeSpot:
         if not isinstance(runouts, tuple) or not runouts:
             raise ValueError("allowed_runouts must be a non-empty list")
         for runout in runouts:
-            if not isinstance(runout, tuple) or len(runout) != 2:
-                raise ValueError("each runout must have two cards (turn, river)")
+            if not isinstance(runout, tuple) or len(runout) != runout_len:
+                raise ValueError(
+                    "each runout must have two cards (turn, river)" if runout_len == 2
+                    else "each runout must have one card (river)"
+                )
             cards = tuple(_card(c, "runout card") for c in runout)
-            if cards[0] == cards[1] or board.intersection(cards):
+            if len(set(cards)) != len(cards) or board.intersection(cards):
                 raise ValueError("runout cards must be distinct and off the board")
+        if len(set(runouts)) != len(runouts):
+            raise ValueError("allowed_runouts must be unique")
         if float(self.pot) != int(self.pot):
-            raise ValueError("allstreet requires an integer-valued pot")
+            raise ValueError(f"{self.backend} requires an integer-valued pot")
 
     # -- identity --------------------------------------------------------------------
 
@@ -487,6 +540,14 @@ class PracticeSpot:
         line = " ".join(a.kind + (f" {a.amount}" if a.amount else "") for a in self.action_history) or "first to act"
         if self.backend == "kuhn":
             return f"Kuhn poker: P{self.hero_seat} holding {hero}, line: {line}"
+        if self.backend == "nplayer-preflop":
+            seat = PREFLOP_POSITIONS[self.game_type][self.hero_seat]
+            sizes = "/".join(str(b) for b in self.bet_sizes)
+            small, big = PREFLOP_BLINDS
+            return (
+                f"Preflop {self.game_type} {seat} with {hero}; blinds {small}/{big}, "
+                f"stack {self.stacks[0]}, open to {sizes}; line: {line}"
+            )
         board = " ".join(format_card(c) for c in self.board)
         position = "OOP" if self.hero_seat == 0 else "IP"
         sizes = "/".join(str(b) for b in self.bet_sizes)
