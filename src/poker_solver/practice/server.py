@@ -319,6 +319,13 @@ class PracticeHandler(BaseHTTPRequestHandler):
         while self.raw_requestline in (b"\r\n", b"\n") and skipped < 8:
             self.raw_requestline = self.rfile.readline(65537)
             skipped += 1
+            if len(self.raw_requestline) > 65536:
+                # Re-apply the stdlib request-line length guard lost on re-read.
+                self.requestline = ""
+                self.request_version = self.protocol_version
+                self.command = None
+                self.send_error(414)
+                return False
         return super().parse_request()
 
     def send_error(self, code: int, message: str | None = None, explain: str | None = None) -> None:

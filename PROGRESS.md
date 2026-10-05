@@ -757,3 +757,9 @@ Accepted/not repaired (logged decisions):
 - N2 header trickle has only per-read 30 s timeout (stdlib limitation; loopback-only server; LOW).
 - N3 legacy solve-allstreet-postflop body shape is pre-existing and out of practice-mode scope (R2 applies to practice ops, which comply).
 Full suite 1025 passed (+3 regression tests).
+
+## W3 re-audit round 4 (2026-10-05T02:53:01Z) — FINAL
+R1: CLEAN. R3: CLEAN. R2/R4: 1 MINOR (F-R4-1: leading-CRLF re-read bypassed 64 KiB request-line guard). Suite 1025.
+Repaired by orchestrator: parse_request re-applies the >65536 guard after each skipped blank line -> 414 JSON with security headers; regression test added. Verified live on :7777 (both auditor repros -> 414; leading CRLF health -> 200) and fuzz re-run: 428 cases, 396x400 + 32x200, PROBLEMS 0.
+Single-line, test-locked fix; no further audit round (audit converged: R1/R3 clean, R2 only this reproduced minor).
+Final full suite: 1026 passed.

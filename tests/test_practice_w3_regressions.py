@@ -210,3 +210,10 @@ def test_garbage_request_line_has_status_and_headers(live, line):
 def test_leading_blank_line_is_ignored(live):
     data = _raw(live, b"\r\nGET /api/health HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n", read_timeout=3.0)
     assert data.startswith(b"HTTP/1.1 200")
+
+
+# --- reaudit-4 F-R4-1: leading CRLF must not bypass the 64 KiB request-line guard
+def test_leading_crlf_long_request_line_is_414(live):
+    data = _raw(live, b"\r\nGET /" + b"a" * 70000 + b" HTTP/1.1\r\nHost: x\r\n\r\n", read_timeout=3.0)
+    assert data.startswith(b"HTTP/1.1 414")
+    assert b"content-security-policy" in data.split(b"\r\n\r\n", 1)[0].lower()
