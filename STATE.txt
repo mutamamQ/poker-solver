@@ -1,4 +1,4 @@
-updated=2026-10-05T03:33:05Z
-wave=W4-implementation
-waiting_on=deleg_cba2c6e1 (5x bryant-opus-55: A families, B disk cache, C progress, D UI, E solver-eval)
-next=integrate W4, full suite, commit+tag practice-mode-w4, push; then W5 audit (non-author) + docs
+updated=2026-10-05T07:36:23Z
+wave=W5 integration (all 8 W5 tasks returned: 3 audits, 4 repairs, docs)
+waiting_on=full suite run (/tmp/w5_suite.txt)
+next=rerun solver-eval full benchmark -> results.*, refresh docs verdict, commit+tag practice-mode-w5, push; fresh non-author re-audit (W6); tag practice-mode-complete

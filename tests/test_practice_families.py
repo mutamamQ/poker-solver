@@ -147,12 +147,12 @@ def _check_solved(solved, family):
     prov = solved.provenance
     assert prov.backend == spot.backend and prov.entrypoint == ENTRYPOINTS[spot.backend]
     assert prov.params_hash == spot.params_hash() and prov.iterations == spot.solve.iterations
-    if family == "preflop-3max-open":
-        assert prov.nash_conv is None  # two-player NashConv is not defined for 3 players
-    else:
-        assert prov.nash_conv is not None and prov.nash_conv >= 0
-    best = max(solved.strategy.values())
-    assert solved.optimal_action == next(a for a in actions if solved.strategy[a] == best)
+    # Every family reports a finite NashConv; 3-max uses the n-player sum of incentives.
+    assert prov.nash_conv is not None and isfinite(prov.nash_conv) and prov.nash_conv >= -1e-12
+    # W5 F4: optimal_action = highest-Q action within the solved strategy's support.
+    support = [a for a in actions if solved.strategy[a] > 0]
+    assert solved.strategy[solved.optimal_action] > 0
+    assert solved.action_values[solved.optimal_action] == max(solved.action_values[a] for a in support)
     import json
     json.dumps(solved.to_json(), allow_nan=False)
 

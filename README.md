@@ -136,6 +136,16 @@ Supported JSON operations are `capabilities`, `list-presets`, `icm`, `bounty-ko`
 
 The bundled `examples/phase3/` and `examples/phase3_*.json` files are non-presolved synthetic templates, not recommended strategies or room defaults. The wrapper-style programmatic fixtures require passing their `request` member to `dispatch_v3`; they are not direct CLI envelopes. See `docs/PHASE3.md` for schemas, Python examples, numeric bounds, and exact limitations. `uv run python scripts/benchmark_phase3.py` runs four bounded synthetic semantic benchmarks; its timings are machine-dependent and are not production-throughput claims.
 
+## Practice mode
+
+Branch `feat/practice-mode` adds a GTO Wizard-style practice mode: a local web UI and API where you play solver-generated spots and are graded by EV loss against a runtime solve. It covers Kuhn, river, flop, turn, heads-up preflop and 3-max preflop families.
+
+```bash
+.venv/bin/python -m poker_solver.practice.server --port 7777   # open http://127.0.0.1:7777/
+```
+
+See `PRACTICE_MODE.md` for how to run it, how scoring works, the known limitations, and how to read the solver evaluation. The solver evaluation's current verdict is in `research/solver-evaluation/results.md`. Detailed docs are in `docs/practice-mode/`.
+
 ## Utility convention
 
 Values are net, zero-sum utility from the beginning of a spot. For initial dead pot `D`, contribution `C_i`, and terminal award `A_i`, multi-street utility is `A_i - C_i - D/2`. The version-1 river special cases are:

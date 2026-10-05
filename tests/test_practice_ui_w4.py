@@ -282,6 +282,7 @@ def test_live_submit_then_progress_shows_attempt(base_url):
     status, ldata = _post(base_url, "practice-list-spots", {})
     assert status == 200
     spot = next(s for s in ldata["result"]["spots"] if s["family"].startswith("kuhn"))
+    # W5 F1: a non-default ``solve`` override is scored but NOT recorded (progress null).
     solve = {"iterations": 30}
     status, sdata = _post(base_url, "practice-solve-spot", {"spot_id": spot["spot_id"], "solve": solve})
     assert status == 200, sdata
@@ -289,11 +290,20 @@ def test_live_submit_then_progress_shows_attempt(base_url):
     status, sub = _post(base_url, "practice-submit-play",
                         {"spot_id": spot["spot_id"], "play": play, "solve": solve, "user": user})
     assert status == 200, sub
+    if sub["result"].get("progress") is None:
+        status, pdata = _post(base_url, "practice-progress", {"user": user})
+        assert int(pdata["result"]["totals"]["attempts"]) == before_attempts
+    else:
+        before_attempts += 1
+
+    # Family-default solve (no override): the attempt is recorded.
+    status, sub = _post(base_url, "practice-submit-play",
+                        {"spot_id": spot["spot_id"], "play": play, "user": user})
+    assert status == 200, sub
     res = sub["result"]
     assert res["user"] == user
     score = float(res["score"]["score"])
-    if res.get("progress") is not None:
-        assert res["progress"]["spot_id"] == spot["spot_id"]
+    assert res["progress"] is not None and res["progress"]["spot_id"] == spot["spot_id"]
 
     status, pdata = _post(base_url, "practice-progress", {"user": user})
     assert status == 200, pdata

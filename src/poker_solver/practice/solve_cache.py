@@ -7,13 +7,21 @@ pre-solved into the repository (R1): the cache lives in
 ``$POKER_PRACTICE_CACHE_DIR`` (default ``~/.cache/poker-solver/practice``).
 
 File layout: one ``<params_hash>.json`` file per solve containing
-``{"schema", "solver_version", "key", "created_at", "solved", "info_key"}`` where
+``{"schema", "solver_version", "code_fingerprint", "key", "created_at", "solved",
+"info_key"}`` where
 ``solved`` is :meth:`SolvedSpot.to_json` and ``info_key`` is a tagged encoding of
 the (arbitrary hashable) solver infoset key.  Files are written atomically
 (temp file in the same directory + :func:`os.replace`).  On load the spot is
 rebuilt from its canonical parameters (never re-solved) and the result is
-rejected -- and the file removed -- if the schema or solver version differs, the
-JSON is corrupt, or the rebuilt spot's ``params_hash`` does not match the key.
+rejected -- and the file removed -- if the schema, solver version or solver *code
+fingerprint* differs, the file cannot be read/decoded for any reason (invalid
+UTF-8, corrupt or deeply nested JSON, malformed fields, ...), the rebuilt spot's
+``params_hash`` does not match the key, or the stored provenance disagrees with the
+rebuilt spot (``params_hash``/``params``/``algorithm``/``iterations``/``seed``).
+
+The code fingerprint (:func:`code_fingerprint`) is a sha256 over the source bytes
+of every solver module the practice adapter depends on, so editing solver code
+invalidates old entries even when the package version is unchanged.
 
 Before a value is persisted it is round-tripped in memory; if the decoded value
 is not exactly equal (field by field, floats exact) the solve is kept in memory
@@ -30,6 +38,7 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
+import hashlib
 import json
 import logging
 import os
@@ -62,6 +71,9 @@ __all__ = [
     "DEFAULT_DIR",
     "DiskSolveCache",
     "default_cache_dir",
+    "code_fingerprint",
+    "compute_code_fingerprint",
+    "FINGERPRINT_MODULES",
     "solved_to_record",
     "solved_from_record",
     "main",
@@ -69,7 +81,7 @@ __all__ = [
 
 logger = logging.getLogger(__name__)
 
-SCHEMA = "practice-solve-cache-v1"
+SCHEMA = "practice-solve-cache-v2"  # v2: adds ``code_fingerprint`` + provenance checks
 ENV_VAR = "POKER_PRACTICE_CACHE_DIR"
 DEFAULT_DIR = Path("~/.cache/poker-solver/practice")
 _KEY_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -85,6 +97,75 @@ def _current_solver_version() -> str:
     from .adapter import solver_version
 
     return solver_version()
+
+
+#: Package-relative source files whose bytes form the solver code fingerprint: every
+#: solver backend / helper reachable from :mod:`poker_solver.practice.adapter`, plus
+#: the practice modules that shape a ``SolvedSpot``.  Missing files are recorded as
+#: missing (so adding/removing one also changes the fingerprint).
+FINGERPRINT_MODULES: tuple[str, ...] = (
+    # solver backends and their game trees
+    "model.py",
+    "cards.py",
+    "equity.py",
+    "evaluator.py",
+    "cfr.py",
+    "mccfr.py",
+    "kuhn.py",
+    "river.py",
+    "multistreet.py",
+    "allstreet.py",
+    "bounded_tree.py",
+    "game_structure.py",
+    "preflop.py",
+    "sizing.py",
+    "nplayer.py",
+    "nplayer_preflop.py",
+    "nplayer_postflop.py",
+    "best_response.py",
+    "api.py",  # complete_strategy
+    # practice layer
+    "practice/adapter.py",
+    "practice/evaluate.py",
+    "practice/models.py",
+    "practice/scoring.py",
+    "practice/catalog.py",
+    "practice/nplayer_metrics.py",
+)
+
+_FINGERPRINT_LOCK = threading.Lock()
+_FINGERPRINT: str | None = None
+
+
+def compute_code_fingerprint(package_dir: str | os.PathLike[str] | None = None) -> str:
+    """sha256 hex digest over ``FINGERPRINT_MODULES`` source bytes under ``package_dir``.
+
+    ``package_dir`` defaults to the installed ``poker_solver`` package directory.
+    Each file contributes its relative name, its length and its bytes (or a
+    ``missing`` marker), so the digest is unambiguous.
+    """
+    root = Path(package_dir) if package_dir is not None else Path(__file__).resolve().parent.parent
+    digest = hashlib.sha256(b"practice-solve-cache-code-fingerprint-v1\0")
+    for rel in FINGERPRINT_MODULES:
+        digest.update(rel.encode("utf-8") + b"\0")
+        try:
+            data = (root / rel).read_bytes()
+        except OSError:
+            digest.update(b"missing\0")
+            continue
+        digest.update(str(len(data)).encode("ascii") + b"\0")
+        digest.update(data)
+    return digest.hexdigest()
+
+
+def code_fingerprint() -> str:
+    """Process-wide cached :func:`compute_code_fingerprint` (computed lazily, once)."""
+    global _FINGERPRINT
+    if _FINGERPRINT is None:
+        with _FINGERPRINT_LOCK:
+            if _FINGERPRINT is None:
+                _FINGERPRINT = compute_code_fingerprint()
+    return _FINGERPRINT
 
 
 def default_cache_dir() -> Path:
@@ -212,13 +293,19 @@ def _policy(entries: Any, value_key: str) -> dict[Action, float]:
     return {action_from_json(e["action"]): e[value_key] for e in entries}
 
 
-def solved_to_record(solved: SolvedSpot, solver_version: str | None = None) -> dict[str, Any]:
-    """JSON-safe on-disk record for ``solved`` (raises ``ValueError`` if not encodable)."""
+def solved_to_record(
+    solved: SolvedSpot, solver_version: str | None = None, *, fingerprint: str | None = None
+) -> dict[str, Any]:
+    """JSON-safe on-disk record for ``solved`` (raises ``ValueError`` if not encodable).
+
+    ``fingerprint`` defaults to the current :func:`code_fingerprint`.
+    """
     if not isinstance(solved, SolvedSpot):
         raise ValueError("value must be a SolvedSpot")
     return {
         "schema": SCHEMA,
         "solver_version": solver_version or solved.provenance.solver_version,
+        "code_fingerprint": fingerprint or code_fingerprint(),
         "key": solved.spot.params_hash(),
         "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "solved": solved.to_json(),
@@ -226,14 +313,46 @@ def solved_to_record(solved: SolvedSpot, solver_version: str | None = None) -> d
     }
 
 
-def solved_from_record(record: Any, *, key: str | None = None, solver_version: str | None = None) -> SolvedSpot:
-    """Decode a record written by :func:`solved_to_record` (fail closed with ``ValueError``)."""
+def _check_provenance_matches_spot(provenance: SolveProvenance, spot: PracticeSpot, key: str | None) -> None:
+    """Reject records whose provenance disagrees with the rebuilt spot (F8)."""
+    spot_hash = spot.params_hash()
+    if provenance.params_hash != spot_hash or (key is not None and provenance.params_hash != key):
+        raise ValueError("provenance params_hash does not match the spot / cache key")
+    if provenance.backend != spot.backend:
+        raise ValueError("provenance backend does not match the spot")
+    solve = spot.solve
+    if (provenance.algorithm, provenance.iterations, provenance.seed) != (
+        solve.algorithm,
+        solve.iterations,
+        solve.seed,
+    ):
+        raise ValueError("provenance algorithm/iterations/seed do not match spot.solve")
+    params = provenance.to_json()["params"]
+    canonical = spot.canonical()
+    if json.dumps(params, sort_keys=True) != json.dumps(canonical, sort_keys=True) or params != canonical:
+        raise ValueError("provenance params do not match spot.canonical()")
+
+
+def solved_from_record(
+    record: Any,
+    *,
+    key: str | None = None,
+    solver_version: str | None = None,
+    fingerprint: str | None = None,
+) -> SolvedSpot:
+    """Decode a record written by :func:`solved_to_record` (fail closed with ``ValueError``).
+
+    ``key``/``solver_version``/``fingerprint`` are only checked when given.  Callers
+    must still treat *any* exception as a corrupt record (see ``DiskSolveCache._load``).
+    """
     if not isinstance(record, Mapping):
         raise ValueError("record must be an object")
     if record.get("schema") != SCHEMA:
         raise ValueError(f"schema mismatch: {record.get('schema')!r} != {SCHEMA!r}")
     if solver_version is not None and record.get("solver_version") != solver_version:
         raise ValueError(f"solver_version mismatch: {record.get('solver_version')!r} != {solver_version!r}")
+    if fingerprint is not None and record.get("code_fingerprint") != fingerprint:
+        raise ValueError("code_fingerprint mismatch (solver code changed since this solve)")
     if key is not None and record.get("key") != key:
         raise ValueError("record key does not match the file key")
     data = record.get("solved")
@@ -245,6 +364,7 @@ def solved_from_record(record: Any, *, key: str | None = None, solver_version: s
     provenance = _provenance_from_json(data["provenance"])
     if solver_version is not None and provenance.solver_version != solver_version:
         raise ValueError("provenance solver_version mismatch")
+    _check_provenance_matches_spot(provenance, spot, key if key is not None else record.get("key"))
     optimal_size = data["optimal_size"]
     return SolvedSpot(
         spot=spot,
@@ -271,14 +391,26 @@ class DiskSolveCache(MutableMapping[str, SolvedSpot]):
     LRU becomes unbounded for that instance so no solves are lost).
     """
 
-    def __init__(self, directory: str | os.PathLike[str], *, memory_items: int = DEFAULT_MEMORY_ITEMS):
+    def __init__(
+        self,
+        directory: str | os.PathLike[str],
+        *,
+        memory_items: int = DEFAULT_MEMORY_ITEMS,
+        fingerprint: str | None = None,
+    ):
         if isinstance(memory_items, bool) or not isinstance(memory_items, int) or memory_items < 0:
             raise ValueError("memory_items must be a non-negative integer")
         self.directory = Path(directory).expanduser()
         self.memory_items = memory_items
         self._memory: OrderedDict[str, SolvedSpot] = OrderedDict()
+        #: keys held in memory that are NOT on disk (write failed / not serializable);
+        #: never evicted by the LRU so a successful solve is never lost (F9).
+        self._volatile: set[str] = set()
         self._lock = threading.RLock()
         self._solver_version = _current_solver_version()
+        if fingerprint is not None and (not isinstance(fingerprint, str) or not fingerprint):
+            raise ValueError("fingerprint must be a non-empty string")
+        self._fingerprint = fingerprint or code_fingerprint()
         self.disk_ok = self._init_dir()
         self.hits = 0
         self.misses = 0
@@ -321,12 +453,21 @@ class DiskSolveCache(MutableMapping[str, SolvedSpot]):
 
     # -- memory LRU ----------------------------------------------------------------
 
-    def _remember(self, key: str, value: SolvedSpot) -> None:
+    def _remember(self, key: str, value: SolvedSpot, *, persisted: bool = True) -> None:
         self._memory[key] = value
         self._memory.move_to_end(key)
-        if self.disk_ok:  # memory-only mode must keep everything
-            while len(self._memory) > self.memory_items:
-                self._memory.popitem(last=False)
+        if persisted:
+            self._volatile.discard(key)
+        else:
+            self._volatile.add(key)
+        if not self.disk_ok:  # memory-only mode must keep everything
+            return
+        # Evict least-recently-used *persisted* entries only; unpersisted ones stay.
+        excess = len(self._memory) - self.memory_items
+        if excess <= 0:
+            return
+        for old in [k for k in self._memory if k not in self._volatile][:excess]:
+            del self._memory[old]
 
     # -- disk IO -------------------------------------------------------------------
 
@@ -338,27 +479,35 @@ class DiskSolveCache(MutableMapping[str, SolvedSpot]):
             if path.stat().st_size > MAX_FILE_BYTES:
                 self._discard_file(path, "file too large")
                 return None
-            text = path.read_text(encoding="utf-8")
+            raw = path.read_bytes()
         except FileNotFoundError:
             return None
-        except OSError as exc:
+        except OSError as exc:  # transient IO problem (permissions, ...): miss, keep the file
             logger.warning("cannot read practice cache file %s: %s", path, exc)
             return None
         try:
-            record = json.loads(text)
-            return solved_from_record(record, key=key, solver_version=self._solver_version)
-        except (ValueError, KeyError, TypeError, AttributeError, IndexError) as exc:
-            self._discard_file(path, str(exc) or type(exc).__name__)
+            # Any failure while decoding (UnicodeDecodeError, RecursionError from deep
+            # nesting, ZeroDivisionError/OverflowError in the info_key codec, Type/Key/
+            # AttributeError from malformed fields, ...) means a corrupt record (F1).
+            record = json.loads(raw.decode("utf-8"))
+            return solved_from_record(
+                record, key=key, solver_version=self._solver_version, fingerprint=self._fingerprint
+            )
+        except Exception as exc:  # noqa: BLE001 - fail closed: corrupt file == miss + removal
+            self._discard_file(path, f"{type(exc).__name__}: {exc}")
             return None
 
     def _store(self, key: str, value: SolvedSpot) -> bool:
         try:
-            record = solved_to_record(value, self._solver_version)
+            record = solved_to_record(value, self._solver_version, fingerprint=self._fingerprint)
             text = json.dumps(record, sort_keys=True, allow_nan=False, separators=(",", ":"))
             # Persist only if the record decodes back to an exactly equal value.
-            if solved_from_record(json.loads(text), key=key, solver_version=self._solver_version) != value:
+            back = solved_from_record(
+                json.loads(text), key=key, solver_version=self._solver_version, fingerprint=self._fingerprint
+            )
+            if back != value:
                 raise ValueError("record does not round-trip exactly")
-        except (ValueError, KeyError, TypeError) as exc:
+        except Exception as exc:  # noqa: BLE001 - anything unencodable stays memory-only
             logger.warning("practice solve %s kept in memory only (not serializable: %s)", key[:12], exc)
             return False
         tmp = None
@@ -419,14 +568,14 @@ class DiskSolveCache(MutableMapping[str, SolvedSpot]):
         if value.spot.params_hash() != key or value.provenance.params_hash != key:
             raise ValueError("SolvedSpot params_hash does not match the cache key")
         with self._lock:
-            self._remember(key, value)
-            if self.disk_ok:
-                self._store(key, value)
+            persisted = self._store(key, value) if self.disk_ok else True
+            self._remember(key, value, persisted=persisted)
 
     def __delitem__(self, key: str) -> None:
         _validate_key(key)
         with self._lock:
             found = self._memory.pop(key, None) is not None
+            self._volatile.discard(key)
             if self.disk_ok:
                 try:
                     self._path(key).unlink()
@@ -439,6 +588,8 @@ class DiskSolveCache(MutableMapping[str, SolvedSpot]):
                 raise KeyError(key)
 
     def __contains__(self, key: object) -> bool:
+        if not isinstance(key, str) or not _KEY_RE.match(key):
+            return False  # Mapping semantics: malformed keys are simply absent (F10)
         try:
             self[key]  # type: ignore[index]
         except KeyError:
@@ -459,6 +610,7 @@ class DiskSolveCache(MutableMapping[str, SolvedSpot]):
         removed = 0
         with self._lock:
             self._memory.clear()
+            self._volatile.clear()
             if not self.disk_ok:
                 return 0
             try:
@@ -476,7 +628,9 @@ class DiskSolveCache(MutableMapping[str, SolvedSpot]):
         return removed
 
     def stats(self) -> dict[str, Any]:
-        """``{dir, disk_ok, count, bytes, memory_items, schema, solver_version}`` (files not validated)."""
+        """``{dir, disk_ok, count, bytes, memory_items, schema, solver_version, code_fingerprint}``.
+
+        Files are not validated."""
         total = 0
         keys = self._disk_keys()
         for key in keys:
@@ -492,6 +646,7 @@ class DiskSolveCache(MutableMapping[str, SolvedSpot]):
             "memory_items": len(self._memory),
             "schema": SCHEMA,
             "solver_version": self._solver_version,
+            "code_fingerprint": self._fingerprint,
         }
 
 
@@ -566,6 +721,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"bytes: {stats['bytes']}")
             print(f"disk_ok: {stats['disk_ok']}")
             print(f"schema: {stats['schema']}  solver_version: {stats['solver_version']}")
+            print(f"code_fingerprint: {stats['code_fingerprint']}")
             return 0
         removed = cache.clear()
         print(f"removed {removed} cache files from {cache.directory}")

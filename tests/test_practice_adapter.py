@@ -54,8 +54,10 @@ def check_solved(solved: SolvedSpot):
     assert prov.nash_conv is not None and prov.nash_conv >= 0 and prov.wall_time_s > 0
     assert prov.solver_version == solver_version() and prov.entrypoint.startswith("poker_solver.")
     assert dict(prov.params)["pot"] == spot.canonical()["pot"]
-    best_p = max(solved.strategy.values())
-    assert solved.optimal_action == next(a for a in solved.legal_actions if solved.strategy[a] == best_p)
+    # W5 F4: optimal_action = highest-Q action within the solved strategy's support.
+    support = [a for a in solved.legal_actions if solved.strategy[a] > 0]
+    assert solved.strategy[solved.optimal_action] > 0
+    assert solved.action_values[solved.optimal_action] == max(solved.action_values[a] for a in support)
     data = solved.to_json()
     json.dumps(data, allow_nan=False)
     assert set(data) == {"spot", "provenance", "legal_actions", "pot_at_decision", "strategy", "action_values",

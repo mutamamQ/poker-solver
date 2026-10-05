@@ -37,7 +37,6 @@ from ..game_structure import ForcedPost, award_pot_layers, build_pot_layers
 from ..kuhn import kuhn_root
 from ..model import CHANCE, TERMINAL, Action, GameState, Strategy
 from ..multistreet import MultiStreetConfig, create_root as create_multistreet_root
-from ..nplayer import NPlayerCFRSolver
 from ..nplayer_preflop import (
     NPlayerPreflopConfig,
     NPlayerPreflopContinuation,
@@ -48,6 +47,7 @@ from ..nplayer_preflop import (
 from ..preflop import WeightedCombo as PreflopCombo
 from ..river import RiverConfig, river_root
 from .evaluate import action_values
+from .nplayer_metrics import FlatNPlayerCFR, FlatTree, nash_conv_nplayer
 from .models import PREFLOP_BLINDS, PREFLOP_POSITIONS, PracticeSpot, SolvedSpot, SolveProvenance, format_hand
 
 __all__ = [
@@ -60,6 +60,9 @@ __all__ = [
     "CachedState",
     "portable_key",
     "preflop_config",
+    "pseudo_raise_aliases",
+    "merge_pseudo_raises",
+    "optimal_action",
 ]
 
 ENTRYPOINTS = MappingProxyType(
@@ -72,7 +75,8 @@ ENTRYPOINTS = MappingProxyType(
         ),
         "nplayer-preflop": (
             "poker_solver.nplayer_preflop.create_nplayer_preflop_root"
-            "+nplayer.NPlayerCFRSolver.train (terminal-table: evaluator.evaluate_seven sampled equity)"
+            "+practice.nplayer_metrics.FlatNPlayerCFR.train (bit-identical to nplayer.NPlayerCFRSolver;"
+            " terminal-table: evaluator.evaluate_seven sampled equity; NashConv: nplayer_metrics.nash_conv_nplayer)"
         ),
         "multistreet": "poker_solver.multistreet.create_root(turn)+cfr.CFRSolver.train",
     }
@@ -357,6 +361,48 @@ def locate_decision(root: GameState, spot: PracticeSpot, hand: Any, backend: str
     return found[0] if found else None
 
 
+# --------------------------------------------------------------------------- user-facing actions
+
+
+def pseudo_raise_aliases(actions: tuple[Action, ...]) -> dict[Action, Action]:
+    """``{RAISE(t): CALL(t)}`` for raises whose target equals the call target.
+
+    ``multistreet`` (and ``allstreet``, which builds on it) lists a wager target equal
+    to the opponent's all-in as ``RAISE`` even when it only matches the bet; such an
+    action is a call, not a raise, and must never be offered to a user as a raise.
+    """
+    calls = [a for a in actions if a.kind == "CALL"]
+    if not calls:
+        return {}
+    call = calls[0]
+    return {a: call for a in actions if a.kind == "RAISE" and a.amount == call.amount}
+
+
+def optimal_action(
+    actions: tuple[Action, ...], strategy: Mapping[Action, float], q: Mapping[Action, float]
+) -> Action:
+    """Displayed "optimal" action, consistent with Q-based grading.
+
+    The highest-Q action among those the solved strategy actually plays (probability
+    > 0); ties go to the higher probability, then legal-action order.  At an exact
+    equilibrium every supported action has the same Q, so this is a strategy action;
+    before convergence it is the supported action that grading scores best, never an
+    action the solver does not play.
+    """
+    support = [a for a in actions if strategy[a] > 0.0] or list(actions)
+    return max(support, key=lambda a: (q[a], strategy[a], -actions.index(a)))
+
+
+def merge_pseudo_raises(policy: dict[Action, float], aliases: Mapping[Action, Action]) -> dict[Action, float]:
+    """Fold the probability of each pseudo-raise into the CALL it duplicates."""
+    if not aliases:
+        return policy
+    merged = {a: p for a, p in policy.items() if a not in aliases}
+    for alias, call in aliases.items():
+        merged[call] += policy[alias]
+    return merged
+
+
 # --------------------------------------------------------------------------- adapter
 
 
@@ -370,6 +416,7 @@ class SolverAdapter:
         self._lock = threading.Lock()
         self.timeout_s = float(timeout_s)
         self.solve_count = 0
+        self._inflight: dict[str, list] = {}
 
     def cached(self, spot: PracticeSpot) -> SolvedSpot | None:
         """Cached result for this exact ``params_hash``, if any."""
@@ -383,8 +430,32 @@ class SolverAdapter:
         key = spot.params_hash()
         with self._lock:
             hit = self._cache.get(key)
-        if hit is not None:
-            return hit
+            if hit is not None:
+                return hit
+            flight = self._inflight.get(key)
+            if flight is None:
+                flight = self._inflight[key] = [threading.Lock(), 0, None]
+            flight[1] += 1
+        # Single flight: concurrent cold requests for one params_hash serialize on a
+        # per-key lock; followers find the leader's result in the cache instead of
+        # solving again (if the leader failed, the next one solves itself).
+        try:
+            with flight[0]:
+                with self._lock:
+                    hit = self._cache.get(key)
+                if hit is None:
+                    hit = flight[2]  # leader's result even if the cache did not keep it
+                if hit is not None:
+                    return hit
+                flight[2] = self._solve_cold(spot, key)
+                return flight[2]
+        finally:
+            with self._lock:
+                flight[1] -= 1
+                if flight[1] == 0 and self._inflight.get(key) is flight:
+                    del self._inflight[key]
+
+    def _solve_cold(self, spot: PracticeSpot, key: str) -> SolvedSpot:
         router: dict[str, Callable[[PracticeSpot], SolvedSpot]] = {
             "kuhn": self._solve_kuhn,
             "river": self._solve_river,
@@ -399,7 +470,8 @@ class SolverAdapter:
         with self._lock:
             self._cache.setdefault(key, solved)
             self.solve_count += 1
-            return self._cache[key]
+            # A bounded / write-failing cache may not retain the entry: return the solve.
+            return self._cache.get(key) or solved
 
     # -- backends --------------------------------------------------------------------
 
@@ -408,6 +480,9 @@ class SolverAdapter:
             raise ValueError(f"backend {spot.backend} supports only vanilla-cfr")
         if solver is None:
             solver = CFRSolver(root)
+        return self._train_chunked(solver, spot, start)
+
+    def _train_chunked(self, solver: Any, spot: PracticeSpot, start: float) -> Strategy:
         remaining = spot.solve.iterations
         profile: Strategy = {}
         while remaining > 0:
@@ -469,9 +544,9 @@ class SolverAdapter:
         if spot.solve.algorithm == "vanilla-cfr":
             profile = self._train_cfr(root, spot, start)
         else:
-            profile = MCCFRSolver(root, spot.solve.seed).train(spot.solve.iterations)
-            if time.perf_counter() - start > self.timeout_s:
-                raise ValueError(f"allstreet solve exceeded the {self.timeout_s:g}s budget")
+            # Chunked so the budget is enforced during training; MCCFRSolver keeps its RNG
+            # and regrets across train() calls, so chunking does not change the result.
+            profile = self._train_chunked(MCCFRSolver(root, spot.solve.seed), spot, start)
         profile = complete_strategy(root, profile)
         conv = nash_conv(root, profile).nash_conv
         hands = tuple(c.cards for c in spot.ranges[spot.hero_seat])
@@ -482,11 +557,16 @@ class SolverAdapter:
         config = preflop_config(spot)
         root = CachedState(create_nplayer_preflop_root(config))
         max_depth = 2 + config.num_players + config.max_raises * (config.num_players - 1)
-        solver = NPlayerCFRSolver(root, max_nodes=config.max_nodes, max_depth=max_depth)
-        profile = self._train_cfr(root, spot, start, solver)
-        # NashConv (two-player best responses) is defined for heads-up only; for 3-max
-        # the provenance carries None rather than an unsupported number.
-        conv = nash_conv(root, profile).nash_conv if config.num_players == 2 else None
+        # The tree is compiled once into flat arrays; FlatNPlayerCFR performs exactly the
+        # floating-point operations of nplayer.NPlayerCFRSolver (one walk for all players
+        # instead of one per player), so the profile is bit-identical, only faster.
+        tree = FlatTree(root, max_nodes=config.max_nodes, max_depth=max_depth)
+        profile = self._train_cfr(root, spot, start, FlatNPlayerCFR(tree))
+        if config.num_players == 2:
+            conv = nash_conv(root, profile).nash_conv
+        else:
+            # n-player NashConv: sum over seats of (exact best response - profile value).
+            conv = nash_conv_nplayer(tree, profile).nash_conv
         decision = locate_decision(root, spot, spot.hero_hand, spot.backend)
         if decision is not None:
             sizes = {a.amount for a in decision.legal_actions if a.kind == "RAISE"}
@@ -535,16 +615,26 @@ class SolverAdapter:
         decision = locate_decision(root, spot, hero_hand, spot.backend)
         if decision is None:
             raise ValueError("hero hand has no compatible deal reaching the decision")
-        strategy = self._policy_at(profile, decision)
-        q, _mass = action_values(root, profile, spot.hero_seat, decision.info_key)
+        raw_q, _mass = action_values(root, profile, spot.hero_seat, decision.info_key)
+        aliases = pseudo_raise_aliases(decision.legal_actions)
+        actions = tuple(a for a in decision.legal_actions if a not in aliases)
+        for alias, call in aliases.items():
+            # Facing an all-in, the game tree offers RAISE(target == call target): it moves
+            # exactly the chips a CALL moves, so its solved value must equal CALL's.  It is
+            # shown to the user as the CALL it really is (probability merged); the solver,
+            # the profile and NashConv are untouched.  Fail closed if the values differ.
+            if abs(raw_q[alias] - raw_q[call]) > 1e-9 * max(1.0, abs(raw_q[call])):
+                raise ValueError(f"{alias!r} is not value-equivalent to {call!r}; refusing to merge")
+        strategy = merge_pseudo_raises(self._policy_at(profile, decision), aliases)
+        q = {a: raw_q[a] for a in actions}
         range_strategy: dict[str, Any] = {}
         for hand in range_hands:
             node = locate_decision(root, spot, hand, spot.backend)
             if node is not None:  # hands blocked by every villain combo never reach the node
-                range_strategy[label(hand)] = self._policy_at(profile, node)
-        actions = decision.legal_actions
-        best_p = max(strategy[a] for a in actions)
-        optimal = next(a for a in actions if strategy[a] == best_p)
+                range_strategy[label(hand)] = merge_pseudo_raises(
+                    self._policy_at(profile, node), pseudo_raise_aliases(node.legal_actions)
+                )
+        optimal = optimal_action(actions, strategy, q)
         size = optimal.amount if optimal.kind.lower() in ("bet", "raise") and optimal.amount > 0 else None
         provenance = SolveProvenance(
             backend=spot.backend,

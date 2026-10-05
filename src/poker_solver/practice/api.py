@@ -9,8 +9,21 @@ Operations (see research/practice-mode/w1/task-2.md for the exact response shape
 * ``practice-leaderboard`` {limit?: int 1..100 = 20, family?: str} (provenance null)
 
 ``practice-submit-play`` records the attempt in the persisted :class:`ProgressStore`
-and returns the updated per-spot entry as ``result.progress`` (``null`` if the store
-failed -- recording never fails a submit).
+and returns the updated per-spot entry as ``result.progress``. ``result.progress`` is
+``null`` (result keys never change) when the attempt was *not* recorded:
+
+* the store is unavailable or the write failed (recording never fails a submit);
+* the submit used a non-canonical solve (W5 F1): progress / leaderboard only count
+  attempts scored against the spot's family-default solve (``catalog.FAMILY_DEFAULT_SOLVE``).
+  A ``solve`` override is still solved and scored, but it is a practice-only "what if"
+  -- otherwise ``solve: {iterations: 1}`` would let a client grade any action Perfect.
+  An override equal to the family default (same ``params_hash``) still counts. The
+  stored row carries ``params_hash`` of the solve that produced the score;
+* the HTTP request already timed out (504): the server's :class:`RequestToken` skips
+  the write so a client told "failed" never gets a hidden attempt (W5 F2).
+
+A failed store open is retried after :data:`STORE_RETRY_S` seconds instead of being
+latched for the life of the process (W5 F3).
 
 Every response is ``{"version": 4, "operation": op, "result": ..., "provenance": ...}``.
 Validation is fail-closed: unknown/missing keys and wrong types (bool is not int) raise
@@ -24,12 +37,14 @@ import json
 import logging
 import sys
 import threading
+import time
 from typing import Any, Mapping, Sequence
 
 from .adapter import SolverAdapter
 from .catalog import FAMILIES, find_spot, generate_catalog
 from .models import SolveParams
-from .progress import DEFAULT_USER, ProgressStore, validate_user
+from .progress import (DEFAULT_USER, SKIPPED, ProgressStore, current_request_token,
+                       validate_user)
 from .scoring import score_play
 
 __all__ = [
@@ -38,6 +53,7 @@ __all__ = [
     "ALGORITHMS",
     "handle_practice",
     "set_progress_store",
+    "STORE_RETRY_S",
     "main",
 ]
 
@@ -73,22 +89,25 @@ def _build_cache() -> Any:
 _ADAPTER = SolverAdapter(cache=_build_cache())
 
 # Progress store is opened lazily on first use so importing this module never
-# touches the filesystem; ``None`` + ``_STORE_FAILED`` means "unavailable".
+# touches the filesystem. A failed open is retried no more often than every
+# STORE_RETRY_S seconds (F3: no permanent latch -> recovers once the dir is fixed).
+STORE_RETRY_S = 30.0
 _STORE: ProgressStore | None = None
-_STORE_FAILED = False
+_STORE_RETRY_AT = 0.0  # time.monotonic() before which no reopen is attempted
 _STORE_LOCK = threading.Lock()
 
 
 def _progress_store(*, required: bool) -> ProgressStore | None:
     """Return the shared store. ``required`` -> raise ValueError when unavailable."""
-    global _STORE, _STORE_FAILED
+    global _STORE, _STORE_RETRY_AT
     with _STORE_LOCK:
-        if _STORE is None and not _STORE_FAILED:
+        if _STORE is None and time.monotonic() >= _STORE_RETRY_AT:
             try:
                 _STORE = ProgressStore.from_env()
             except Exception as exc:  # noqa: BLE001 - fail-soft
-                _LOG.warning("practice: progress store unavailable: %s", exc)
-                _STORE_FAILED = True
+                _LOG.warning("practice: progress store unavailable (retry in %.0f s): %s",
+                             STORE_RETRY_S, exc)
+                _STORE_RETRY_AT = time.monotonic() + STORE_RETRY_S
         store = _STORE
     if store is None and required:
         raise ValueError("progress store unavailable")
@@ -96,11 +115,11 @@ def _progress_store(*, required: bool) -> ProgressStore | None:
 
 
 def set_progress_store(store: ProgressStore | None) -> None:
-    """Replace the shared store (tests / embedding). ``None`` re-enables lazy open."""
-    global _STORE, _STORE_FAILED
+    """Replace the shared store (tests / embedding). ``None`` re-enables lazy open now."""
+    global _STORE, _STORE_RETRY_AT
     with _STORE_LOCK:
         _STORE = store
-        _STORE_FAILED = False
+        _STORE_RETRY_AT = 0.0
 
 
 # --------------------------------------------------------------------------- validation
@@ -120,6 +139,10 @@ def _int(value: Any, label: str, *, minimum: int | None = None,
 def _str(value: Any, label: str) -> str:
     if not isinstance(value, str) or not value:
         raise ValueError(f"{label} must be a non-empty string")
+    try:
+        value.encode("utf-8")
+    except UnicodeError:  # lone surrogates; never echo codec text (F5)
+        raise ValueError(f"{label}: invalid string encoding") from None
     return value
 
 
@@ -174,15 +197,25 @@ def _catalog_args(obj: Mapping[str, Any]) -> tuple[tuple[str, ...] | None, int]:
     return families, seed
 
 
-def _resolve_spot(obj: Mapping[str, Any]) -> Any:
+def _resolve_spot_canonical(obj: Mapping[str, Any]) -> tuple[Any, bool]:
+    """``(spot, canonical)``: ``canonical`` iff the effective solve is the family default.
+
+    ``find_spot`` without ``solve`` returns the spot with its family-default solve; an
+    override counts as canonical only when it yields the identical ``params_hash``.
+    """
     spot_id = _str(obj["spot_id"], "spot_id")
     families, seed = _catalog_args(obj)
-    spot = find_spot(spot_id, families=families, seed=seed)
-    if spot is None:
+    base = find_spot(spot_id, families=families, seed=seed)
+    if base is None:
         raise ValueError(f"unknown spot_id {spot_id!r}")
-    if "solve" in obj:
-        spot = spot.with_solve(_solve_params(obj["solve"]))
-    return spot
+    if "solve" not in obj:
+        return base, True
+    spot = base.with_solve(_solve_params(obj["solve"]))
+    return spot, spot.params_hash() == base.params_hash()
+
+
+def _resolve_spot(obj: Mapping[str, Any]) -> Any:
+    return _resolve_spot_canonical(obj)[0]
 
 
 def _check_json(response: dict[str, Any]) -> dict[str, Any]:
@@ -220,24 +253,38 @@ def _submit_play(payload: Any) -> tuple[Any, Any]:
     obj = _payload(payload, {"spot_id", "play"}, {"families", "seed", "solve", "user"},
                    "practice-submit-play")
     user = validate_user(obj["user"]) if "user" in obj else DEFAULT_USER
-    spot = _resolve_spot(obj)
+    spot, canonical = _resolve_spot_canonical(obj)
     solved = _ADAPTER.solve(spot)
     score = score_play(solved, obj["play"])
+    # F1: only family-default solves feed progress/leaderboard; overrides -> null.
+    progress = _record(user, spot, score) if canonical else None
     result = {"user": user, "score": score.to_json(), "solved": solved.to_json(),
-              "progress": _record(user, spot, score)}
+              "progress": progress}
     return result, solved.provenance.to_json()
 
 
 def _record(user: str, spot: Any, score: Any) -> dict[str, Any] | None:
-    """Persist one scored attempt; any store failure -> None (never fails the submit)."""
+    """Persist one scored attempt; any store failure -> None (never fails the submit).
+
+    Inside an HTTP request the write goes through the request's ``RequestToken``
+    (F2): if the server already answered 504 or the deadline passed, nothing is written.
+    """
+    token = current_request_token()
+    if token is not None and (token.cancelled or token.expired()):
+        return None
     try:
         store = _progress_store(required=False)
         if store is None:
             return None
-        return store.record(
-            user=user, spot_id=spot.spot_id, family=spot.family, street=spot.street,
-            game_type=spot.game_type, score=score.score, grade=score.grade,
-            ev_loss_pct=score.ev_loss_pct_pot, params_hash=spot.params_hash())
+
+        def write() -> dict[str, Any]:
+            return store.record(
+                user=user, spot_id=spot.spot_id, family=spot.family, street=spot.street,
+                game_type=spot.game_type, score=score.score, grade=score.grade,
+                ev_loss_pct=score.ev_loss_pct_pot, params_hash=spot.params_hash())
+
+        out = write() if token is None else token.run_side_effect(write)
+        return None if out is SKIPPED else out
     except Exception as exc:  # noqa: BLE001 - fail-soft by contract
         _LOG.warning("practice: failed to record progress: %s", exc)
         return None
@@ -252,8 +299,9 @@ def _progress(payload: Any) -> tuple[Any, Any]:
         return store.progress(user, spot_id), None
     except ValueError:
         raise
-    except Exception as exc:  # noqa: BLE001
-        raise ValueError(f"progress store error: {exc}") from exc
+    except Exception as exc:  # noqa: BLE001 - never echo driver/codec text (F5)
+        _LOG.warning("practice: progress store error: %s", exc)
+        raise ValueError("progress store error") from exc
 
 
 def _leaderboard(payload: Any) -> tuple[Any, Any]:
@@ -266,8 +314,9 @@ def _leaderboard(payload: Any) -> tuple[Any, Any]:
         return {"entries": store.leaderboard(limit=limit, family=family)}, None
     except ValueError:
         raise
-    except Exception as exc:  # noqa: BLE001
-        raise ValueError(f"progress store error: {exc}") from exc
+    except Exception as exc:  # noqa: BLE001 - never echo driver/codec text (F5)
+        _LOG.warning("practice: progress store error: %s", exc)
+        raise ValueError("progress store error") from exc
 
 
 _HANDLERS = {

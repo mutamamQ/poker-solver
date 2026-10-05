@@ -1,0 +1,318 @@
+[
+ {
+  "sid": "preflop-hu-open/6db0bd5d4d67",
+  "solve_t": 2.5,
+  "lastStatus": "Solving\u2026 1s",
+  "pre": {
+   "btns": [
+    "FOLD",
+    "CALL 2",
+    "RAISE 4",
+    "RAISE 30"
+   ],
+   "board": [],
+   "villains": [
+    "Villain (P1) \u00b7 30"
+   ],
+   "hero": "Hero (P0)",
+   "hist": [
+    "First to act/history-step"
+   ],
+   "pot": "3",
+   "presets": [],
+   "sizeVis": false,
+   "err": ""
+  },
+  "r": {
+   "apiLegal": [
+    "FOLD 0",
+    "CALL 2",
+    "RAISE 4",
+    "RAISE 30"
+   ],
+   "apiPot": 3,
+   "potAtDec": 3,
+   "apiBoard": [],
+   "apiStacks": [
+    30,
+    30
+   ],
+   "api": [
+    0,
+    "Blunder",
+    3.0026432291666665,
+    100.08810763888887,
+    false,
+    null
+   ],
+   "ui": [
+    "0",
+    "Blunder",
+    "3.003 chips (100.09% pot)"
+   ],
+   "mixN": 4,
+   "apiMixN": 4,
+   "rangeN": 5,
+   "apiRangeN": 5,
+   "heroRow": 1,
+   "prov": [
+    "nplayer-preflop",
+    "vanilla-cfr",
+    "300",
+    "none",
+    "0.020376",
+    "2.079 s",
+    "0.1.0",
+    "a67e720e5cef251f\u2026"
+   ],
+   "apiProv": [
+    "nplayer-preflop",
+    "vanilla-cfr",
+    300,
+    0.02037579921384891,
+    2.079113830346614
+   ],
+   "fb": "Solver: RAISE[30] 99.8%, FOLD 0.1%, CALL[2] 0.1%, RAISE[4] 0.1%. You: FOLD. EV l"
+  }
+ },
+ {
+  "sid": "flop-cbet/11769311f1bd",
+  "solve_t": 4.6,
+  "lastStatus": "Solving\u2026 3s",
+  "pre": {
+   "btns": [
+    "CHECK",
+    "RAISE 33"
+   ],
+   "board": [
+    "9d",
+    "Tc",
+    "2h"
+   ],
+   "villains": [
+    "Villain (P0) \u00b7 200"
+   ],
+   "hero": "Hero (P1)",
+   "hist": [
+    "CHECK/history-step act-check"
+   ],
+   "pot": "100",
+   "presets": [],
+   "sizeVis": false,
+   "err": ""
+  },
+  "r": {
+   "apiLegal": [
+    "CHECK 0",
+    "RAISE 33"
+   ],
+   "apiPot": 100,
+   "potAtDec": 100,
+   "apiBoard": [
+    "9d",
+    "Tc",
+    "2h"
+   ],
+   "apiStacks": [
+    200,
+    200
+   ],
+   "api": [
+    100,
+    "Perfect",
+    0,
+    0,
+    false,
+    null
+   ],
+   "ui": [
+    "100",
+    "Perfect",
+    "0.000 chips (0.00% pot)"
+   ],
+   "mixN": 2,
+   "apiMixN": 2,
+   "rangeN": 3,
+   "apiRangeN": 3,
+   "heroRow": 1,
+   "prov": [
+    "allstreet",
+    "vanilla-cfr",
+    "200",
+    "none",
+    "4.659379",
+    "4.340 s",
+    "0.1.0",
+    "2c3ab7638ad6473e\u2026"
+   ],
+   "apiProv": [
+    "allstreet",
+    "vanilla-cfr",
+    200,
+    4.659378596568818,
+    4.339908989612013
+   ],
+   "fb": "Solver: CHECK 75.6%, RAISE[33] 24.4%. You: CHECK. EV loss 0.000 chips (0.00% pot"
+  }
+ },
+ {
+  "sid": "turn-barrel/b95c7dba968a",
+  "solve_t": 3.6,
+  "lastStatus": "Solving\u2026 2s",
+  "pre": {
+   "btns": [
+    "CHECK",
+    "RAISE 33"
+   ],
+   "board": [
+    "As",
+    "Td",
+    "7h",
+    "6s"
+   ],
+   "villains": [
+    "Villain (P1) \u00b7 200"
+   ],
+   "hero": "Hero (P0)",
+   "hist": [
+    "First to act/history-step"
+   ],
+   "pot": "100",
+   "presets": [],
+   "sizeVis": false,
+   "err": ""
+  },
+  "r": {
+   "apiLegal": [
+    "CHECK 0",
+    "RAISE 33"
+   ],
+   "apiPot": 100,
+   "potAtDec": 100,
+   "apiBoard": [
+    "As",
+    "Td",
+    "7h",
+    "6s"
+   ],
+   "apiStacks": [
+    200,
+    200
+   ],
+   "api": [
+    0,
+    "Mistake",
+    5.971398593859998,
+    5.971398593859998,
+    false,
+    null
+   ],
+   "ui": [
+    "0",
+    "Mistake",
+    "5.971 chips (5.97% pot)"
+   ],
+   "mixN": 2,
+   "apiMixN": 2,
+   "rangeN": 4,
+   "apiRangeN": 4,
+   "heroRow": 1,
+   "prov": [
+    "multistreet",
+    "vanilla-cfr",
+    "200",
+    "none",
+    "1.159724",
+    "3.316 s",
+    "0.1.0",
+    "2b3a6432b28591d7\u2026"
+   ],
+   "apiProv": [
+    "multistreet",
+    "vanilla-cfr",
+    200,
+    1.1597242271293595,
+    3.3159104799851775
+   ],
+   "fb": "Solver: RAISE[33] 98.8%, CHECK 1.2%. You: CHECK. EV loss 5.971 chips (5.97% pot)"
+  }
+ },
+ {
+  "sid": "preflop-3max-open/a99ed8603bf2",
+  "solve_t": 7.1,
+  "lastStatus": "Solving\u2026 5s",
+  "pre": {
+   "btns": [
+    "FOLD",
+    "CALL 2",
+    "RAISE 5",
+    "RAISE 40"
+   ],
+   "board": [],
+   "villains": [
+    "Villain (P0) \u00b7 40",
+    "Villain (P2) \u00b7 40"
+   ],
+   "hero": "Hero (P1)",
+   "hist": [
+    "FOLD/history-step act-fold"
+   ],
+   "pot": "3",
+   "presets": [],
+   "sizeVis": false,
+   "err": ""
+  },
+  "r": {
+   "apiLegal": [
+    "FOLD 0",
+    "CALL 2",
+    "RAISE 5",
+    "RAISE 40"
+   ],
+   "apiPot": 3,
+   "potAtDec": 3,
+   "apiBoard": [],
+   "apiStacks": [
+    40,
+    40,
+    40
+   ],
+   "api": [
+    54.47788860952476,
+    "Blunder",
+    1.2242270135076179,
+    40.807567116920595,
+    false,
+    null
+   ],
+   "ui": [
+    "54.5",
+    "Blunder",
+    "1.224 chips (40.81% pot)"
+   ],
+   "mixN": 4,
+   "apiMixN": 4,
+   "rangeN": 3,
+   "apiRangeN": 3,
+   "heroRow": 1,
+   "prov": [
+    "nplayer-preflop",
+    "vanilla-cfr",
+    "100",
+    "none",
+    "\u2014",
+    "6.741 s",
+    "0.1.0",
+    "76b18a664a9578c8\u2026"
+   ],
+   "apiProv": [
+    "nplayer-preflop",
+    "vanilla-cfr",
+    100,
+    null,
+    6.740741559304297
+   ],
+   "fb": "Solver: RAISE[40] 76.6%, FOLD 11.4%, RAISE[5] 10.6%, CALL[2] 1.4%. You: FOLD. EV"
+  }
+ }
+]

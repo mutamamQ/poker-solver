@@ -1215,3 +1215,49 @@ table.data tr.me .cell-user { color: var(--accent-text); font-weight: 700; }
 @media (max-width: 560px) { .table-felt.players-3, .table-felt.players-many { padding-bottom: 14px; } }
 .table-felt.players-3, .table-felt.players-many { margin-top: 34px; }
 @media (max-width: 560px) { .table-felt.players-3, .table-felt.players-many { margin-top: 8px; } }
+
+
+/* ==========================================================================
+   W5 UI repairs (research/practice-mode/w5/repair-ui.md)
+   ========================================================================== */
+/* #1/#7: all-in actions (if a backend emits them) get their own hue. */
+:root { --act-allin: #d94f8c; }
+.act-allin { --act: var(--act-allin); }
+.action-btn.act-allin { background: linear-gradient(180deg, #e46aa0, var(--act-allin)); }
+.history-step.act-allin { color: #f39ac2; border-color: rgba(217, 79, 140, 0.45); }
+.mix-seg.act-allin { --act: var(--act-allin); }
+/* Labels are humanized in JS ("Raise 5"); don't re-case them in CSS. */
+.action-btn, .history-step { text-transform: none; }
+
+/* #2: the best badge is neutral (API has no best grade), never grade-coloured. */
+.best-badge { --g: var(--accent-text); background: rgba(124, 92, 255, 0.12); border-color: rgba(124, 92, 255, 0.4); }
+
+/* #4: progress + leaderboard tables fit their panel at every width.
+   Panels stack full-width (the progress table needs the room), cells may wrap,
+   and when the panel itself is narrow the rows become labelled cards. */
+.stats-grid { grid-template-columns: minmax(0, 1fr); }
+.stats-panel { container-type: inline-size; }
+.table-wrap table.data { width: 100%; table-layout: auto; }
+.table-wrap table.data th { white-space: nowrap; }
+.table-wrap table.data td { white-space: normal; overflow-wrap: anywhere; }
+table.data.progress-table .cell-spot { max-width: none; white-space: normal; overflow: visible; text-overflow: clip; min-width: 8em; }
+table.data.progress-table .cell-when { white-space: normal; min-width: 6.5em; }
+@container (max-width: 640px) {
+  .table-wrap table.data, .table-wrap table.data tbody, .table-wrap table.data tr, .table-wrap table.data td { display: block; width: 100%; }
+  .table-wrap table.data thead { display: none; }   /* each cell carries its header via data-label */
+  .table-wrap table.data tr { padding: 6px 0; border-bottom: 1px solid var(--border-strong); }
+  .table-wrap table.data td {
+    display: grid; grid-template-columns: minmax(6.5em, 34%) minmax(0, 1fr); gap: 8px;
+    padding: 3px 8px; border-bottom: 0; text-align: left;
+  }
+  .table-wrap table.data td.num { text-align: left; }
+  .table-wrap table.data td::before { content: attr(data-label); color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  table.data.progress-table .cell-spot, table.data.progress-table .cell-when { min-width: 0; }
+}
+
+/* #5: give heads-up seats the same clearance above the felt as 3-max so the
+   villain seat (top: -24px) never covers the spot header/meta line. */
+@media (min-width: 561px) {
+  .table-felt { margin-top: 34px; }
+}
+.size-presets { display: flex; flex-wrap: wrap; gap: 6px; }

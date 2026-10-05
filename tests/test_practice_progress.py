@@ -20,7 +20,8 @@ from poker_solver.practice import api as practice_api
 from poker_solver.practice.progress import SCHEMA_VERSION, ProgressStore, default_path
 from poker_solver.practice.server import make_server
 
-SOLVE = {"algorithm": "vanilla-cfr", "iterations": 30, "seed": None}
+# Equal to the kuhn-intro family default: only canonical solves are recorded (W5 F1).
+SOLVE = {"algorithm": "vanilla-cfr", "iterations": 200, "seed": None}
 
 
 @pytest.fixture()

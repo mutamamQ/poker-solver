@@ -10,6 +10,15 @@ solve -- this module never invents a score.
 * ``ProgressStore.from_env()``: ``$POKER_PRACTICE_DATA_DIR/progress.sqlite3`` or
   ``~/.local/share/poker-solver/practice/progress.sqlite3``.
 * All SQL is parameterized.
+* Per-spot ``last_*`` fields (score, grade, ``last_at``) all come from the newest row
+  (MAX(id)) and ``first_at`` from the oldest row (MIN(id)), so they always describe real,
+  consistent attempts even if wall-clock timestamps go backwards (W5 F6).
+* Before every operation the DB file's (st_dev, st_ino) is compared with the one the
+  connection opened; if the file was deleted or replaced the connection is reopened
+  (fresh schema) instead of writing into an unlinked inode (W5 F7).
+* :class:`RequestToken` / :func:`request_scope` let the HTTP server cancel the
+  progress write of a request that already answered 504 (W5 F2). Stdlib only, so the
+  server can import it cheaply.
 """
 
 from __future__ import annotations
@@ -19,6 +28,8 @@ import os
 import re
 import sqlite3
 import threading
+import time
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -30,6 +41,10 @@ __all__ = [
     "SCHEMA_VERSION",
     "validate_user",
     "default_path",
+    "RequestToken",
+    "request_scope",
+    "current_request_token",
+    "SKIPPED",
 ]
 
 USER_RE = re.compile(r"[A-Za-z0-9_.-]{1,32}")
@@ -59,6 +74,84 @@ _MIGRATIONS: tuple[tuple[str, ...], ...] = (
         "CREATE INDEX IF NOT EXISTS idx_attempts_family ON attempts(family)",
     ),
 )
+
+
+# --------------------------------------------------------------------------- request token
+
+
+class _Skipped:
+    __slots__ = ()
+
+    def __repr__(self) -> str:  # pragma: no cover - debug aid
+        return "SKIPPED"
+
+
+#: Sentinel returned by :meth:`RequestToken.run_side_effect` when the write was skipped.
+SKIPPED: Any = _Skipped()
+
+
+class RequestToken:
+    """Deadline + cancellation for one server request (W5 F2).
+
+    The server creates one per ``/api/v4`` request; ``practice.api`` performs the
+    progress write through :meth:`run_side_effect`. Once the server gave up on the
+    request (:meth:`cancel`) or the monotonic ``deadline`` has passed, the write is
+    skipped. The write runs under the token lock, so :meth:`cancel` either happens
+    strictly before it (write skipped, ``True``) or strictly after it (``False``: the
+    attempt was recorded and the caller should deliver the imminent result instead of
+    a 504).
+    """
+
+    def __init__(self, deadline: float | None = None):
+        self.deadline = deadline
+        self._lock = threading.Lock()
+        self._cancelled = False
+        self._committed = False
+
+    @property
+    def cancelled(self) -> bool:
+        with self._lock:
+            return self._cancelled
+
+    def expired(self) -> bool:
+        return self.deadline is not None and time.monotonic() >= self.deadline
+
+    def cancel(self) -> bool:
+        """Cancel; ``True`` if no side effect was committed (safe to report failure)."""
+        with self._lock:
+            self._cancelled = True
+            return not self._committed
+
+    def run_side_effect(self, fn: Any) -> Any:
+        """Run ``fn()`` unless cancelled/expired (-> :data:`SKIPPED`)."""
+        with self._lock:
+            if self._cancelled or self.expired():
+                self._cancelled = True
+                return SKIPPED
+            self._committed = True
+            return fn()
+
+
+_REQUEST_LOCAL = threading.local()
+
+
+@contextmanager
+def request_scope(token: RequestToken | None):
+    """Bind ``token`` to the current thread for the duration of the block."""
+    previous = getattr(_REQUEST_LOCAL, "token", None)
+    _REQUEST_LOCAL.token = token
+    try:
+        yield token
+    finally:
+        _REQUEST_LOCAL.token = previous
+
+
+def current_request_token() -> RequestToken | None:
+    """The token bound by :func:`request_scope` on this thread (``None`` outside a request)."""
+    return getattr(_REQUEST_LOCAL, "token", None)
+
+
+# --------------------------------------------------------------------------- helpers
 
 
 def validate_user(value: Any) -> str:
@@ -92,29 +185,36 @@ def _finite(value: Any, label: str) -> float:
 def _text(value: Any, label: str) -> str:
     if not isinstance(value, str) or not value:
         raise ValueError(f"{label} must be a non-empty string")
+    _encodable(value, label)
     return value
 
 
+def _encodable(value: str, label: str) -> str:
+    """Reject strings sqlite cannot store (lone surrogates) without leaking codec text (F5)."""
+    try:
+        value.encode("utf-8")
+    except UnicodeError:
+        raise ValueError(f"{label}: invalid string encoding") from None
+    return value
+
+
+# first_* / last_* come from the MIN(id) / MAX(id) rows, never from MIN/MAX(ts), so
+# every field of an entry describes a real attempt (F6). ``{spot_filter}`` is a
+# constant fragment, never user data.
 _SPOT_SQL = """
-SELECT a.spot_id,
-       (SELECT family    FROM attempts l WHERE l.user = a.user AND l.spot_id = a.spot_id
-                         ORDER BY l.id DESC LIMIT 1) AS family,
-       (SELECT street    FROM attempts l WHERE l.user = a.user AND l.spot_id = a.spot_id
-                         ORDER BY l.id DESC LIMIT 1) AS street,
-       (SELECT game_type FROM attempts l WHERE l.user = a.user AND l.spot_id = a.spot_id
-                         ORDER BY l.id DESC LIMIT 1) AS game_type,
-       COUNT(*)     AS attempts,
-       MAX(a.score) AS best_score,
-       (SELECT score FROM attempts l WHERE l.user = a.user AND l.spot_id = a.spot_id
-                     ORDER BY l.id DESC LIMIT 1) AS last_score,
-       (SELECT grade FROM attempts l WHERE l.user = a.user AND l.spot_id = a.spot_id
-                     ORDER BY l.id DESC LIMIT 1) AS last_grade,
-       MIN(a.ts)    AS first_at,
-       MAX(a.ts)    AS last_at
-FROM attempts a
-WHERE a.user = ? {spot_filter}
-GROUP BY a.spot_id
-ORDER BY a.spot_id
+WITH g AS (
+    SELECT spot_id, COUNT(*) AS attempts, MAX(score) AS best_score,
+           MIN(id) AS first_id, MAX(id) AS last_id
+    FROM attempts
+    WHERE user = ? {spot_filter}
+    GROUP BY spot_id
+)
+SELECT g.spot_id, l.family, l.street, l.game_type, g.attempts, g.best_score,
+       l.score AS last_score, l.grade AS last_grade, f.ts AS first_at, l.ts AS last_at
+FROM g
+JOIN attempts l ON l.id = g.last_id
+JOIN attempts f ON f.id = g.first_id
+ORDER BY g.spot_id
 """
 
 _SPOT_KEYS = ("spot_id", "family", "street", "game_type", "attempts", "best_score",
@@ -145,19 +245,58 @@ class ProgressStore:
     def __init__(self, path: str | os.PathLike[str]):
         self.path = Path(path)
         self._lock = threading.Lock()
-        if str(self.path) != ":memory:":
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(str(self.path), check_same_thread=False, timeout=10.0,
-                                     isolation_level=None)
+        self._memory = str(self.path) == ":memory:"
+        self._file_id: tuple[int, int] | None = None
+        self.reopen_count = 0
+        with self._lock:
+            self._conn = self._open_locked()
+
+    def _stat_id(self) -> tuple[int, int] | None:
         try:
-            with self._lock:
-                self._conn.execute("PRAGMA busy_timeout = 10000")
-                self._conn.execute("PRAGMA journal_mode = WAL")
-                self._conn.execute("PRAGMA synchronous = NORMAL")
-                self._migrate()
+            st = os.stat(self.path)
+        except FileNotFoundError:
+            return None
+        return (st.st_dev, st.st_ino)
+
+    def _open_locked(self) -> sqlite3.Connection:
+        if not self._memory:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(str(self.path), check_same_thread=False, timeout=10.0,
+                               isolation_level=None)
+        try:
+            conn.execute("PRAGMA busy_timeout = 10000")
+            conn.execute("PRAGMA journal_mode = WAL")
+            conn.execute("PRAGMA synchronous = NORMAL")
+            self._conn = conn
+            self._migrate()
         except Exception:
-            self._conn.close()
+            conn.close()
             raise
+        if not self._memory:
+            self._file_id = self._stat_id()
+        return conn
+
+    def _ensure_file_locked(self) -> None:
+        """Reopen if the DB file was deleted or replaced since it was opened (F7)."""
+        if self._memory:
+            return
+        current = self._stat_id()
+        if current is not None and current == self._file_id:
+            return
+        try:
+            self._conn.close()  # checkpoints into the old (possibly unlinked) inode
+        except Exception:  # noqa: BLE001 - old handle is unusable anyway
+            pass
+        if current is None:
+            # The main file is gone: leftover -wal/-shm belong to the deleted DB and
+            # must not be replayed onto the fresh one.
+            for suffix in ("-wal", "-shm"):
+                try:
+                    os.unlink(f"{self.path}{suffix}")
+                except FileNotFoundError:
+                    pass
+        self._open_locked()
+        self.reopen_count += 1
 
     @classmethod
     def from_env(cls) -> "ProgressStore":
@@ -189,6 +328,7 @@ class ProgressStore:
 
     def schema_version(self) -> int:
         with self._lock:
+            self._ensure_file_locked()
             row = self._conn.execute(
                 "SELECT COALESCE(MAX(version), 0) FROM schema_migrations").fetchone()
         return int(row[0])
@@ -217,6 +357,7 @@ class ProgressStore:
             _iso(ts if ts is not None else datetime.now(timezone.utc)),
         )
         with self._lock:
+            self._ensure_file_locked()
             self._conn.execute(
                 "INSERT INTO attempts(user, spot_id, family, street, game_type, score, grade,"
                 " ev_loss_pct, params_hash, ts) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", row)
@@ -231,7 +372,7 @@ class ProgressStore:
         if spot_id is None:
             sql, params = _SPOT_SQL.format(spot_filter=""), (user,)
         else:
-            sql, params = _SPOT_SQL.format(spot_filter="AND a.spot_id = ?"), (user, spot_id)
+            sql, params = _SPOT_SQL.format(spot_filter="AND spot_id = ?"), (user, spot_id)
         out = []
         for row in self._conn.execute(sql, params).fetchall():
             entry = dict(zip(_SPOT_KEYS, row))
@@ -243,7 +384,10 @@ class ProgressStore:
 
     def spots(self, user: str, spot_id: str | None = None) -> list[dict[str, Any]]:
         user = validate_user(user)
+        if spot_id is not None:
+            spot_id = _text(spot_id, "spot_id")
         with self._lock:
+            self._ensure_file_locked()
             return self._spots_locked(user, spot_id)
 
     def progress(self, user: str, spot_id: str | None = None) -> dict[str, Any]:
@@ -265,6 +409,7 @@ class ProgressStore:
         if family is not None:
             family = _text(family, "family")
         with self._lock:
+            self._ensure_file_locked()
             rows = self._conn.execute(_LEADERBOARD_SQL, (family, family, limit)).fetchall()
         return [
             {

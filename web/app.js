@@ -10,7 +10,22 @@
   var API_URL = "/api/v4";
   var API_VERSION = 4;
   var SUIT_GLYPHS = { s: "\u2660", h: "\u2665", d: "\u2666", c: "\u2663" };
+  // Action kinds are compared case-insensitively: legacy families emit lowercase
+  // ("bet"), the W4 backends emit uppercase ("RAISE"). The original kind string
+  // from legal_actions is always what gets sent back to the API.
   var SIZED_KINDS = { bet: true, raise: true };
+  // Display names only (values sent to the API are never rewritten).
+  var KIND_LABELS = {
+    fold: "Fold", check: "Check", call: "Call", bet: "Bet", raise: "Raise",
+    allin: "All-in", "all-in": "All-in", all_in: "All-in", shove: "All-in",
+  };
+  // Keyboard shortcuts -> normalized kinds, tried in order.
+  var KEY_KINDS = {
+    f: ["fold"],
+    c: ["check", "call"],
+    b: ["bet", "raise"],
+    a: ["allin", "all-in", "all_in", "shove"],
+  };
   var USER_KEY = "practice.user";                 // localStorage key
   var USER_RE = /^[A-Za-z0-9_.-]{1,32}$/;         // mirrors the server's user-id rule
   var SERVER_TIMEOUT_S = 90;                      // practice server request timeout
@@ -69,14 +84,29 @@
 
   function cap(s) { s = String(s || ""); return s.charAt(0).toUpperCase() + s.slice(1); }
 
+  function normKind(kind) { return String(kind || "").trim().toLowerCase(); }
+
+  function isSized(a) { return !!a && SIZED_KINDS[normKind(a.kind)] === true && isNum(a.amount) && a.amount > 0; }
+
+  // "RAISE" -> "Raise", "all_in" -> "All-in", unknown "SOME_KIND" -> "Some kind".
+  function kindLabel(kind) {
+    var k = normKind(kind);
+    if (Object.prototype.hasOwnProperty.call(KIND_LABELS, k)) return KIND_LABELS[k];
+    return cap(k.replace(/[_]+/g, " "));
+  }
+
   function actionLabel(a) {
     if (!a) return "\u2014";
-    var label = cap(a.kind);
+    var label = kindLabel(a.kind);
     if (isNum(a.amount) && a.amount > 0) label += " " + fmtNum(a.amount);
     return label;
   }
 
-  function actClass(kind) { return "act-" + String(kind || "").toLowerCase().replace(/[^a-z0-9_-]/g, ""); }
+  function actClass(kind) {
+    var k = normKind(kind);
+    if (KIND_LABELS[k] === "All-in") k = "allin";
+    return "act-" + k.replace(/[^a-z0-9_-]/g, "");
+  }
 
   function sameAction(a, b) {
     return !!a && !!b && a.kind === b.kind && Number(a.amount || 0) === Number(b.amount || 0);
@@ -229,7 +259,12 @@
     var changed = raw !== state.user;
     state.user = raw;
     storeUser(raw);
-    if (changed && refresh) loadProgress();
+    if (changed && refresh) {
+      loadProgress();
+      // The "me" highlight depends on the user: re-mark rows now, then reload.
+      rerenderLeaderboard();
+      loadLeaderboard();
+    }
     return true;
   }
 
@@ -264,8 +299,20 @@
     });
     thead.appendChild(hr);
     table.appendChild(thead);
+    // Numeric columns: align the header with its right-aligned cells.
+    if (rows.length) {
+      Array.prototype.forEach.call(rows[0].children, function (cell, i) {
+        if (cell.classList.contains("num") && hr.children[i]) hr.children[i].classList.add("num");
+      });
+    }
     var tbody = el("tbody");
-    rows.forEach(function (r) { tbody.appendChild(r); });
+    rows.forEach(function (r) {
+      // data-label lets the narrow (stacked) layout show each cell's header via CSS attr().
+      Array.prototype.forEach.call(r.children, function (cell, i) {
+        if (headers[i]) cell.dataset.label = headers[i];
+      });
+      tbody.appendChild(r);
+    });
     table.appendChild(tbody);
     return table;
   }
@@ -364,7 +411,12 @@
     loadLeaderboard();
   }
 
+  var lastLeaderboard = null;   // last practice-leaderboard result (API data), for re-marking "me"
+
+  function rerenderLeaderboard() { if (lastLeaderboard) renderLeaderboard(lastLeaderboard); }
+
   function renderLeaderboard(res) {
+    lastLeaderboard = res || null;
     var box = $("leaderboard-table");
     clear(box);
     var entries = (res && Array.isArray(res.entries)) ? res.entries : [];
@@ -401,6 +453,7 @@
       renderLeaderboard(data.result || {});
     }).catch(function (err) {
       if (token !== leaderboardToken) return;
+      lastLeaderboard = null;
       clear($("leaderboard-table"));
       $("leaderboard-scope").textContent = "";
       $("leaderboard-panel").classList.add("is-unavailable");
@@ -465,7 +518,8 @@
     if (isNum(entry.attempts)) tip += " \u00b7 " + entry.attempts + " attempt" + (entry.attempts === 1 ? "" : "s");
     badge.title = tip;
     badge.setAttribute("aria-label", tip);
-    if (entry.last_grade) badge.classList.add("grade-" + String(entry.last_grade).toLowerCase().replace(/[^a-z0-9_-]/g, "-"));
+    // Neutral colour on purpose: the API exposes no grade for the best attempt
+    // (only last_grade), so colouring "Best x" by the last grade would misreport it.
     return badge;
   }
 
@@ -644,7 +698,7 @@
     var seen = {};
     var out = [];
     legalActions().forEach(function (a) {
-      if (SIZED_KINDS[a.kind] && isNum(a.amount) && a.amount > 0 && !seen[a.amount]) {
+      if (isSized(a) && !seen[a.amount]) {
         seen[a.amount] = true;
         out.push(a.amount);
       }
@@ -674,9 +728,11 @@
       amounts.forEach(function (amt) {
         var chip = el("button", "size-preset", fmtNum(amt));
         chip.type = "button";
+        chip.dataset.amount = String(amt);
+        chip.setAttribute("aria-pressed", "false");
         chip.addEventListener("click", function () {
           $("action-size").value = String(amt);
-          var idx = legalActions().findIndex(function (a) { return SIZED_KINDS[a.kind] && a.amount === amt; });
+          var idx = legalActions().findIndex(function (a) { return isSized(a) && a.amount === amt; });
           if (idx >= 0) selectAction(idx, true);
         });
         presets.appendChild(chip);
@@ -696,27 +752,49 @@
       b.classList.toggle("selected", sel);
       b.setAttribute("aria-pressed", sel ? "true" : "false");
     });
-    if (!keepSize && SIZED_KINDS[a.kind] && isNum(a.amount) && a.amount > 0) {
+    if (!keepSize && isSized(a)) {
       $("action-size").value = String(a.amount);
     }
+    markPresets();
     updateControls();
   }
 
-  function selectByKinds(kinds) {
+  function markPresets() {
+    var a = state.selectedAction;
+    var v = parseFloat($("action-size").value);
+    Array.prototype.forEach.call($("size-presets").querySelectorAll(".size-preset"), function (chip) {
+      var on = isSized(a) && Number(chip.dataset.amount) === v;
+      chip.classList.toggle("selected", on);
+      chip.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+  }
+
+  // Indexes of legal actions whose normalized kind is in `kinds`, in kind-priority order.
+  function indexesByKinds(kinds) {
     var acts = legalActions();
-    for (var k = 0; k < kinds.length; k++) {
-      for (var i = 0; i < acts.length; i++) {
-        if (acts[i].kind === kinds[k]) { selectAction(i); return true; }
-      }
-    }
-    return false;
+    var out = [];
+    kinds.forEach(function (kind) {
+      acts.forEach(function (a, i) { if (normKind(a.kind) === kind) out.push(i); });
+    });
+    return out;
+  }
+
+  // Select the first matching action; pressing the same key again cycles through
+  // the matches (e.g. B: Raise 5 -> Raise 40 -> Raise 5).
+  function selectByKinds(kinds) {
+    var idxs = indexesByKinds(kinds);
+    if (!idxs.length) return false;
+    var cur = state.selectedAction ? legalActions().indexOf(state.selectedAction) : -1;
+    var pos = idxs.indexOf(cur);
+    selectAction(idxs[pos >= 0 ? (pos + 1) % idxs.length : 0]);
+    return true;
   }
 
   function currentPlay() {
     var a = state.selectedAction;
     if (!a) return null;
     var amount = isNum(a.amount) ? a.amount : 0;
-    if (SIZED_KINDS[a.kind] && amount > 0) {
+    if (isSized(a)) {
       var v = parseFloat($("action-size").value);
       if (!isFinite(v) || v <= 0) throw new Error("Enter a positive size.");
       amount = v;
@@ -776,7 +854,23 @@
       if (token !== state.solveToken) return;
       stopSolving();
       setPending(false);
+      // Controls were disabled while solving, which drops focus to <body> (e.g. after
+      // "Next spot"). Hand it to the first action so the keyboard flow continues.
+      if (focusLost()) {
+        var first = $("action-controls").querySelector(".action-btn");
+        focusEl(first || $("resolve-btn"));
+      }
     });
+  }
+
+  function focusLost() {
+    var a = document.activeElement;
+    return !a || a === document.body || a === document.documentElement ||
+      (a.disabled === true) || !document.contains(a);
+  }
+
+  function focusEl(node) {
+    if (node && !node.disabled && typeof node.focus === "function") node.focus({ preventScroll: false });
   }
 
   // ---------------------------------------------------------------- submit
@@ -791,8 +885,10 @@
     if (override) payload.solve = override;
     startSolving("Scoring");
     setPending(true);
+    var ok = false;
     api("practice-submit-play", payload).then(function (data) {
       if (token !== state.solveToken) return;
+      ok = true;
       var res = data.result || {};
       state.submitted = true;
       renderResult(res.score || {}, res.solved || {});
@@ -805,6 +901,9 @@
       if (token !== state.solveToken) return;
       stopSolving();
       setPending(false);
+      // Keep keyboard users in place: after a result go to "Next spot"; after a
+      // failure back to "Submit" (both were disabled while scoring).
+      focusEl(ok ? $("next-spot") : $("submit-play"));
     });
   }
 
@@ -981,13 +1080,16 @@
       return;
     }
     if (typing) return;
-    var k = key.toLowerCase();
-    if (k === "f") { if (selectByKinds(["fold"])) ev.preventDefault(); }
-    else if (k === "c") { if (selectByKinds(["check", "call"])) ev.preventDefault(); }
-    else if (k === "b") {
-      if (selectByKinds(["bet", "raise"])) {
-        ev.preventDefault();
-        if (!$("size-row").classList.contains("hidden")) $("action-size").focus();
+    var k = String(key || "").toLowerCase();
+    if (!Object.prototype.hasOwnProperty.call(KEY_KINDS, k)) return;
+    if (selectByKinds(KEY_KINDS[k])) {
+      ev.preventDefault();
+      if (k === "b" && isSized(state.selectedAction) && !$("size-row").classList.contains("hidden")) {
+        $("action-size").focus();       // B: edit the size next (Enter submits from there)
+      } else {
+        // Focus the selected button so Enter submits it and focus is never lost.
+        var btn = $("action-controls").querySelector(".action-btn.selected");
+        if (btn) btn.focus();
       }
     }
   }
@@ -1032,10 +1134,17 @@
     $("progress-refresh").addEventListener("click", function () { loadProgress(); });
     $("leaderboard-refresh").addEventListener("click", function () { loadLeaderboard(); });
     $("action-size").addEventListener("input", function () {
-      // Typing a size implies a sized action; pick the first bet/raise if none selected.
+      // Typing a size implies a sized action. An exact legal amount selects that
+      // action; any other size keeps the current bet/raise (server snaps it) or
+      // picks the first one.
+      if (state.submitted || state.pending) return;
+      var v = parseFloat($("action-size").value);
+      var acts = legalActions();
+      var exact = isFinite(v) ? acts.findIndex(function (a) { return isSized(a) && a.amount === v; }) : -1;
+      if (exact >= 0) { selectAction(exact, true); return; }
       var sel = state.selectedAction;
-      if (sel && SIZED_KINDS[sel.kind]) return;
-      var idx = legalActions().findIndex(function (a) { return SIZED_KINDS[a.kind] && a.amount > 0; });
+      if (isSized(sel)) { markPresets(); return; }
+      var idx = acts.findIndex(isSized);
       if (idx >= 0) selectAction(idx, true);
     });
     document.addEventListener("keydown", onKey);

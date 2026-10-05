@@ -4,6 +4,17 @@ Serves the static practice UI from ``web/`` (strict allow-list) and forwards
 ``POST /api/v4`` JSON envelopes to :func:`poker_solver.api_v4.dispatch_v4`.
 
 Run with ``python -m poker_solver.practice.server --port 7777``.
+
+Robustness (W5 audit):
+
+* Each ``/api/v4`` dispatch runs under a :class:`~poker_solver.practice.progress.RequestToken`
+  with the request deadline. When the server answers 504 it cancels the token, so the
+  abandoned dispatch thread never records a progress attempt afterwards (F2). The
+  solve itself cannot be interrupted and still finishes in its daemon thread (its
+  result then warms the solve cache).
+* Listen backlog is :data:`REQUEST_QUEUE_SIZE` (stdlib default 5 reset concurrent
+  clients, F4).
+* 400 bodies never contain raw Python codec error text (F5).
 """
 
 from __future__ import annotations
@@ -26,6 +37,7 @@ __all__ = [
     "CONTENT_SECURITY_POLICY",
     "STATIC_SECURITY_HEADERS",
     "MAX_BODY_BYTES",
+    "REQUEST_QUEUE_SIZE",
     "make_server",
     "serve",
     "main",
@@ -36,6 +48,8 @@ logger = logging.getLogger(__name__)
 DEFAULT_WEB_DIR = Path(__file__).resolve().parents[3] / "web"
 DEFAULT_TIMEOUT_S = 90.0
 MAX_BODY_BYTES = 1024 * 1024  # 1 MiB
+#: listen(2) backlog; the stdlib default of 5 RSTs concurrent API clients (F4).
+REQUEST_QUEUE_SIZE = 64
 
 # URL path -> (file name inside web dir, content type). Never derived from the URL.
 STATIC_ROUTES: dict[str, tuple[str, str]] = {
@@ -120,11 +134,22 @@ class _Timeout(Exception):
 
 
 def _run_with_timeout(fn: DispatchFn, data: dict[str, Any], timeout: float) -> Any:
+    """Run ``fn(data)`` in a worker thread bound to a deadline ``RequestToken``.
+
+    On timeout the token is cancelled *before* the 504 is reported, so the worker's
+    progress write is skipped (F2). If the write had already committed (race at the
+    deadline), the result is about to be returned, so we wait for it instead of
+    reporting a failure for a recorded attempt.
+    """
+    from .progress import RequestToken, request_scope
+
+    token = RequestToken(deadline=time.monotonic() + timeout)
     box: dict[str, Any] = {}
 
     def target() -> None:
         try:
-            box["result"] = fn(data)
+            with request_scope(token):
+                box["result"] = fn(data)
         except BaseException as exc:  # re-raised in the request thread
             box["error"] = exc
 
@@ -132,7 +157,11 @@ def _run_with_timeout(fn: DispatchFn, data: dict[str, Any], timeout: float) -> A
     worker.start()
     worker.join(timeout)
     if worker.is_alive():
-        raise _Timeout()
+        if token.cancel():
+            raise _Timeout()
+        worker.join(5.0)  # attempt committed; only response building remains
+        if worker.is_alive():  # pragma: no cover - defensive
+            raise _Timeout()
     if "error" in box:
         raise box["error"]
     return box.get("result")
@@ -280,7 +309,10 @@ class PracticeHandler(BaseHTTPRequestHandler):
             return
         try:
             data = parse_json_strict(raw)
-        except (ValueError, UnicodeDecodeError) as exc:
+        except UnicodeError:
+            self._error(400, "malformed JSON: invalid string encoding")
+            return
+        except ValueError as exc:
             self._error(400, f"malformed JSON: {exc}")
             return
         except RecursionError:
@@ -293,6 +325,9 @@ class PracticeHandler(BaseHTTPRequestHandler):
             result = _run_with_timeout(type(self).dispatch, data, _timeout_seconds())
         except _Timeout:
             self._error(504, "solve timed out")
+            return
+        except UnicodeError:  # e.g. lone surrogate reaching an encoder (F5)
+            self._error(400, "invalid string encoding")
             return
         except (ValueError, TypeError, KeyError) as exc:
             message = exc.args[0] if isinstance(exc, KeyError) and exc.args else exc
@@ -347,6 +382,11 @@ class PracticeHandler(BaseHTTPRequestHandler):
         self._error(code, message or phrase)
 
 
+class _PracticeHTTPServer(ThreadingHTTPServer):
+    request_queue_size = REQUEST_QUEUE_SIZE
+    daemon_threads = True
+
+
 def make_server(
     host: str = "127.0.0.1",
     port: int = 7777,
@@ -358,7 +398,7 @@ def make_server(
     if dispatch is not None:
         attrs["dispatch"] = staticmethod(dispatch)
     handler = type("BoundPracticeHandler", (PracticeHandler,), attrs)
-    server = ThreadingHTTPServer((host, port), handler)
+    server = _PracticeHTTPServer((host, port), handler)
     server.daemon_threads = True
     return server
 

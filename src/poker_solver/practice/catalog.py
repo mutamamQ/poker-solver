@@ -50,13 +50,16 @@ FAMILIES = (
 )
 #: Per-family default solve settings (used when ``generate_catalog(solve=None)``).
 #: Sized so a cold solve stays within the 20 s budget on the reference host; see
-#: research/practice-mode/w4/task-A.md for measured times.
+#: research/practice-mode/w4/task-A.md for measured times.  preflop-3max-open runs
+#: 5000 iterations on the bit-identical flat trainer (practice.nplayer_metrics): every
+#: catalog spot then measures < 1 % pot exploitability (NashConv / 3 / pot), see
+#: research/practice-mode/w5/repair.md.
 FAMILY_DEFAULT_SOLVE = {
     "kuhn-intro": SolveParams(),
     "river-oop-bet-or-check": SolveParams(),
     "river-ip-facing-bet": SolveParams(),
     "preflop-hu-open": SolveParams(iterations=300),
-    "preflop-3max-open": SolveParams(iterations=100),
+    "preflop-3max-open": SolveParams(iterations=5000),
     "flop-cbet": SolveParams(iterations=200),
     "turn-barrel": SolveParams(iterations=200),
 }
