@@ -1,9 +1,9 @@
 {
   "schema_version": "solver-evaluation-v1",
   "mode": "full",
-  "started_at": "2026-10-05T05:39:12+00:00",
-  "finished_at": "2026-10-05T05:44:31+00:00",
-  "wall_time_s": 319.1659050886519,
+  "started_at": "2026-10-05T07:50:44+00:00",
+  "finished_at": "2026-10-05T07:59:03+00:00",
+  "wall_time_s": 499.2766230618581,
   "host": {
     "platform": "Linux-6.8.0-138-generic-x86_64-with-glibc2.39",
     "python": "3.11.16",
@@ -13,15 +13,15 @@
     "cpu_count": 2,
     "hostname": "genomix-server",
     "loadavg_at_start": [
-      5.16650390625,
-      4.6767578125,
-      4.05615234375
+      3.09521484375,
+      2.44580078125,
+      2.34521484375
     ]
   },
   "git": {
-    "commit": "ed886c8ca9e441713f61052f31b845c94401c291",
+    "commit": "2a6f57ccadfa4ba2e60eb8131bb572b760d136cf",
     "branch": "feat/practice-mode",
-    "dirty": true
+    "dirty": false
   },
   "solver_version": "0.1.0",
   "verdict_rule": "Each criterion is graded from its THRESHOLDS entry. A capability's verdict is the worst of its evidence criteria and its documented scope cap. overall = worst(all criteria + all capabilities) with FAIL > PARTIAL > PASS. correctness_verdict = worst over the correctness criteria only (excludes timing, default-solve quality and scale).",
@@ -148,7 +148,7 @@
         "checkpoints": [
           {
             "iterations": 100,
-            "train_s_cumulative": 0.14487052522599697,
+            "train_s_cumulative": 0.05252700671553612,
             "nash_conv": 0.05134947169389606,
             "exploitability": 0.02567473584694803,
             "ev0": -0.055987211609916265,
@@ -156,7 +156,7 @@
           },
           {
             "iterations": 300,
-            "train_s_cumulative": 0.3552709650248289,
+            "train_s_cumulative": 0.15973045490682125,
             "nash_conv": 0.02707957628677843,
             "exploitability": 0.013539788143389214,
             "ev0": -0.055637657306868565,
@@ -164,7 +164,7 @@
           },
           {
             "iterations": 1000,
-            "train_s_cumulative": 1.3494546771980822,
+            "train_s_cumulative": 0.5225984086282551,
             "nash_conv": 0.014538212817128915,
             "exploitability": 0.0072691064085644574,
             "ev0": -0.05555721950490666,
@@ -172,7 +172,7 @@
           },
           {
             "iterations": 3000,
-            "train_s_cumulative": 3.551228707190603,
+            "train_s_cumulative": 1.5628054146654904,
             "nash_conv": 0.008389052571772526,
             "exploitability": 0.004194526285886263,
             "ev0": -0.05546838931093864,
@@ -180,7 +180,7 @@
           },
           {
             "iterations": 10000,
-            "train_s_cumulative": 9.61633134027943,
+            "train_s_cumulative": 5.191817641723901,
             "nash_conv": 0.004635572629949097,
             "exploitability": 0.0023177863149745487,
             "ev0": -0.05554639582927165,
@@ -237,9 +237,9 @@
             "ok": true
           }
         },
-        "seconds_per_iteration": 0.000961633134027943
+        "seconds_per_iteration": 0.0005191817641723901
       },
-      "wall_time_s": 9.61980648804456
+      "wall_time_s": 5.195338091347367
     },
     {
       "id": "C2-kuhn-mccfr",
@@ -257,21 +257,21 @@
         "checkpoints": [
           {
             "iterations": 1000,
-            "train_s_cumulative": 0.08922161580994725,
+            "train_s_cumulative": 0.0760135930031538,
             "nash_conv": 0.0487158453032949,
             "ev0": -0.05460732763637194,
             "value_error": 0.000948227919183614
           },
           {
             "iterations": 5000,
-            "train_s_cumulative": 0.5834839008748531,
+            "train_s_cumulative": 0.3679436552338302,
             "nash_conv": 0.0312699458167181,
             "ev0": -0.05554663534356119,
             "value_error": 8.920211994362104e-06
           },
           {
             "iterations": 20000,
-            "train_s_cumulative": 2.1447276566177607,
+            "train_s_cumulative": 1.4735956462100148,
             "nash_conv": 0.0055109197352420924,
             "ev0": -0.05551758997070494,
             "value_error": 3.79655848506133e-05
@@ -279,7 +279,7 @@
         ],
         "decreasing": true
       },
-      "wall_time_s": 2.144766677170992
+      "wall_time_s": 1.4736328762955964
     },
     {
       "id": "C3-river-closed-form",
@@ -300,7 +300,7 @@
           {
             "bet": 5,
             "iterations": 4000,
-            "seconds": 4.319248411804438,
+            "seconds": 3.899928722064942,
             "nash_conv": 0.04432856840552457,
             "air_bet": 0.33861808801026105,
             "ref_air_bet": 0.3333333333333333,
@@ -315,7 +315,7 @@
           {
             "bet": 10,
             "iterations": 4000,
-            "seconds": 3.495417586993426,
+            "seconds": 3.592301937751472,
             "nash_conv": 0.06654076093394323,
             "air_bet": 0.5035868663889694,
             "ref_air_bet": 0.5,
@@ -330,7 +330,7 @@
           {
             "bet": 20,
             "iterations": 4000,
-            "seconds": 3.5039108521305025,
+            "seconds": 3.0680473833344877,
             "nash_conv": 0.08931557076912178,
             "air_bet": 0.6517041253549121,
             "ref_air_bet": 0.6666666666666666,
@@ -347,7 +347,7 @@
         "max_freq_error": 0.014962541311754562,
         "values_within_bound": true
       },
-      "wall_time_s": 11.336448381654918
+      "wall_time_s": 10.575815330259502
     },
     {
       "id": "C4-sizing-menu",
@@ -363,7 +363,7 @@
         "iterations": 3000,
         "menus": {
           "(5,)": {
-            "seconds": 0.33732409216463566,
+            "seconds": 0.31212418992072344,
             "ev0": 1.6636307249639408,
             "nash_conv": 0.04688223473749087,
             "nuts_policy": {
@@ -375,7 +375,7 @@
             ]
           },
           "(20,)": {
-            "seconds": 0.7894812356680632,
+            "seconds": 0.6040965509600937,
             "ev0": 3.325783156314619,
             "nash_conv": 0.10460237705410158,
             "nuts_policy": {
@@ -387,7 +387,7 @@
             ]
           },
           "(5, 20)": {
-            "seconds": 1.7893847399391234,
+            "seconds": 1.3736630999483168,
             "ev0": 3.3146083154058092,
             "nash_conv": 0.1035688203105245,
             "nuts_policy": {
@@ -406,7 +406,7 @@
         "nuts_small_size_weight": 0.0049426561242370826,
         "single_size_values_within_bound": true
       },
-      "wall_time_s": 2.918454403989017
+      "wall_time_s": 2.2900874516926706
     },
     {
       "id": "C5-convergence-river",
@@ -425,35 +425,35 @@
         "checkpoints": [
           {
             "iterations": 25,
-            "train_s_cumulative": 0.1953513571061194,
+            "train_s_cumulative": 0.1746767689473927,
             "nash_conv": 2.9503494271987307,
             "nash_conv_pct_pot": 2.9503494271987307
           },
           {
             "iterations": 100,
-            "train_s_cumulative": 0.8985365759581327,
+            "train_s_cumulative": 0.6991091179661453,
             "nash_conv": 0.8899122413589211,
             "nash_conv_pct_pot": 0.8899122413589211
           },
           {
             "iterations": 400,
-            "train_s_cumulative": 4.26981607824564,
+            "train_s_cumulative": 2.771478704176843,
             "nash_conv": 0.4259165757021961,
             "nash_conv_pct_pot": 0.4259165757021961
           },
           {
             "iterations": 1600,
-            "train_s_cumulative": 17.66352643445134,
+            "train_s_cumulative": 11.090335053857416,
             "nash_conv": 0.20086752325926938,
             "nash_conv_pct_pot": 0.20086752325926938
           }
         ],
         "ratio_last_first": 0.0680826214710395,
         "loglog_slope": -0.634640049987588,
-        "seconds_per_iteration": 0.011039704021532088,
+        "seconds_per_iteration": 0.006931459408660885,
         "game": "river backend, first river-oop-bet-or-check catalog input (river-oop-bet-or-check/e79981f9d62d)"
       },
-      "wall_time_s": 17.8362536537461
+      "wall_time_s": 11.197837582789361
     },
     {
       "id": "C5-convergence-flop",
@@ -472,35 +472,35 @@
         "checkpoints": [
           {
             "iterations": 10,
-            "train_s_cumulative": 0.07233617128804326,
+            "train_s_cumulative": 0.04686171282082796,
             "nash_conv": 36.18775050431252,
             "nash_conv_pct_pot": 36.18775050431252
           },
           {
             "iterations": 40,
-            "train_s_cumulative": 0.31312562618404627,
+            "train_s_cumulative": 0.17380610667169094,
             "nash_conv": 23.15199310296594,
             "nash_conv_pct_pot": 23.15199310296594
           },
           {
             "iterations": 160,
-            "train_s_cumulative": 1.5443037189543247,
+            "train_s_cumulative": 0.6736171650700271,
             "nash_conv": 7.968735071157781,
             "nash_conv_pct_pot": 7.96873507115778
           },
           {
             "iterations": 640,
-            "train_s_cumulative": 4.448316997848451,
+            "train_s_cumulative": 2.6682777157984674,
             "nash_conv": 3.611559537292294,
             "nash_conv_pct_pot": 3.611559537292294
           }
         ],
         "ratio_last_first": 0.0998006089619166,
         "loglog_slope": -0.575656823575912,
-        "seconds_per_iteration": 0.006950495309138205,
+        "seconds_per_iteration": 0.004169183930935105,
         "game": "allstreet flop Td8h2c, {AA,54s} vs {QQ,JJ}, runout 3d7c, bet 33, stack 100"
       },
-      "wall_time_s": 4.54240266373381
+      "wall_time_s": 2.7285893517546356
     },
     {
       "id": "C5-convergence-turn",
@@ -519,35 +519,35 @@
         "checkpoints": [
           {
             "iterations": 10,
-            "train_s_cumulative": 0.061352008022367954,
+            "train_s_cumulative": 0.03316971007734537,
             "nash_conv": 28.429351102720858,
             "nash_conv_pct_pot": 28.429351102720858
           },
           {
             "iterations": 40,
-            "train_s_cumulative": 0.2108679092489183,
+            "train_s_cumulative": 0.11940430710092187,
             "nash_conv": 11.335574283369109,
             "nash_conv_pct_pot": 11.335574283369107
           },
           {
             "iterations": 160,
-            "train_s_cumulative": 0.7527805571444333,
+            "train_s_cumulative": 0.46486981492489576,
             "nash_conv": 6.4701783006455855,
             "nash_conv_pct_pot": 6.4701783006455855
           },
           {
             "iterations": 640,
-            "train_s_cumulative": 2.9100414430722594,
+            "train_s_cumulative": 1.8303479976020753,
             "nash_conv": 3.0220719984823496,
             "nash_conv_pct_pot": 3.0220719984823496
           }
         ],
         "ratio_last_first": 0.10630112476232774,
         "loglog_slope": -0.5255146903449078,
-        "seconds_per_iteration": 0.004546939754800405,
+        "seconds_per_iteration": 0.0028599187462532427,
         "game": "multistreet turn Td8h2c3d, {AA,54s} vs {QQ,JJ}, rivers {7c,Ks}, bet 50, stack 100"
       },
-      "wall_time_s": 2.9919387931004167
+      "wall_time_s": 1.8727074479684234
     },
     {
       "id": "C5-convergence-preflop-hu",
@@ -566,41 +566,41 @@
         "checkpoints": [
           {
             "iterations": 10,
-            "train_s_cumulative": 0.005024271085858345,
+            "train_s_cumulative": 0.0029880884103477,
             "nash_conv": 0.8881579257339731,
             "nash_conv_pct_pot": 29.605264191132438
           },
           {
             "iterations": 40,
-            "train_s_cumulative": 0.015336731914430857,
+            "train_s_cumulative": 0.01187746087089181,
             "nash_conv": 0.42356983357984457,
             "nash_conv_pct_pot": 14.118994452661484
           },
           {
             "iterations": 160,
-            "train_s_cumulative": 0.05990436812862754,
+            "train_s_cumulative": 0.045777092687785625,
             "nash_conv": 0.18766039743790253,
             "nash_conv_pct_pot": 6.255346581263417
           },
           {
             "iterations": 640,
-            "train_s_cumulative": 0.23928597336634994,
+            "train_s_cumulative": 0.18121724762022495,
             "nash_conv": 0.085160175880447,
             "nash_conv_pct_pot": 2.8386725293482336
           },
           {
             "iterations": 2560,
-            "train_s_cumulative": 0.9860994215123355,
+            "train_s_cumulative": 0.7244635187089443,
             "nash_conv": 0.04108684512941285,
             "nash_conv_pct_pot": 1.3695615043137617
           }
         ],
         "ratio_last_first": 0.04626074253118747,
         "loglog_slope": -0.5591242272176203,
-        "seconds_per_iteration": 0.0003851950865282561,
+        "seconds_per_iteration": 0.0002829935619956814,
         "game": "nplayer_preflop 2p, SB {AA,77} vs BB {KK,QQ}, stacks 10, blinds 1/2, all-in raises"
       },
-      "wall_time_s": 1.0039483890868723
+      "wall_time_s": 0.7337549580261111
     },
     {
       "id": "C5-convergence-preflop-3p",
@@ -619,42 +619,42 @@
         "checkpoints": [
           {
             "iterations": 10,
-            "train_s_cumulative": 0.010032853111624718,
+            "train_s_cumulative": 0.009384522680193186,
             "nash_conv": 3.0946224261100115,
             "nash_conv_pct_pot": 103.15408087033371
           },
           {
             "iterations": 40,
-            "train_s_cumulative": 0.049434558022767305,
+            "train_s_cumulative": 0.037158109713345766,
             "nash_conv": 1.3218098591027678,
             "nash_conv_pct_pot": 44.060328636758925
           },
           {
             "iterations": 160,
-            "train_s_cumulative": 0.17079594498500228,
+            "train_s_cumulative": 0.1488966573961079,
             "nash_conv": 0.240976568856128,
             "nash_conv_pct_pot": 8.032552295204267
           },
           {
             "iterations": 640,
-            "train_s_cumulative": 0.8289116462692618,
+            "train_s_cumulative": 0.591848008800298,
             "nash_conv": 0.09817528417501509,
             "nash_conv_pct_pot": 3.2725094725005026
           },
           {
             "iterations": 2560,
-            "train_s_cumulative": 3.343461625277996,
+            "train_s_cumulative": 2.365918518509716,
             "nash_conv": 0.05485243179367677,
             "nash_conv_pct_pot": 1.828414393122559
           }
         ],
         "ratio_last_first": 0.017725080556152736,
         "loglog_slope": -0.769356949688476,
-        "seconds_per_iteration": 0.0013060396973742171,
+        "seconds_per_iteration": 0.0009241869212928578,
         "game": "nplayer_preflop 3p, BTN {AA,77}, SB KK, BB QQ, stacks 10, blinds 1/2",
         "metric": "independent n-player NashConv oracle (sum of best-response incentives)"
       },
-      "wall_time_s": 5.469487295020372
+      "wall_time_s": 3.781080118380487
     },
     {
       "id": "C6-br-oracle-agreement",
@@ -748,7 +748,7 @@
         ],
         "max_rel_error": 1.4210854715202004e-14
       },
-      "wall_time_s": 2.844957634806633e-05
+      "wall_time_s": 2.3270025849342346e-05
     },
     {
       "id": "C7-kuhn3-analytic",
@@ -776,7 +776,7 @@
         "checkpoints": [
           {
             "iterations": 100,
-            "train_s_cumulative": 0.5109410211443901,
+            "train_s_cumulative": 0.3939750026911497,
             "nash_conv": 0.08952130377076936,
             "values": [
               -0.034555113840937866,
@@ -787,7 +787,7 @@
           },
           {
             "iterations": 300,
-            "train_s_cumulative": 1.644814568106085,
+            "train_s_cumulative": 1.1818897197954357,
             "nash_conv": 0.031602510935078466,
             "values": [
               -0.03834427334605484,
@@ -798,7 +798,7 @@
           },
           {
             "iterations": 1000,
-            "train_s_cumulative": 5.661425903439522,
+            "train_s_cumulative": 3.9079926246777177,
             "nash_conv": 0.01657131284756508,
             "values": [
               -0.029327510901795924,
@@ -809,7 +809,7 @@
           },
           {
             "iterations": 3000,
-            "train_s_cumulative": 14.159323055762798,
+            "train_s_cumulative": 11.747649457771331,
             "nash_conv": 0.006462500148748898,
             "values": [
               -0.03014486943075754,
@@ -820,7 +820,7 @@
           },
           {
             "iterations": 10000,
-            "train_s_cumulative": 57.93035294348374,
+            "train_s_cumulative": 40.37312603741884,
             "nash_conv": 0.0021746000790157614,
             "values": [
               -0.02823778044769218,
@@ -834,7 +834,7 @@
         "values_in_analytic_ranges": true,
         "infosets": 48
       },
-      "wall_time_s": 57.974745877087116
+      "wall_time_s": 40.410982908215374
     },
     {
       "id": "C8-determinism",
@@ -857,7 +857,7 @@
           "n-player CFR repeat identical": true
         }
       },
-      "wall_time_s": 2.2509588040411472
+      "wall_time_s": 1.5187314758077264
     },
     {
       "id": "C9-param-sensitivity",
@@ -910,7 +910,7 @@
         },
         "note": "river stack is only a bet cap there, so the stack perturbation runs on an allstreet flop spot where it binds"
       },
-      "wall_time_s": 12.252382018137723
+      "wall_time_s": 9.760129682254046
     },
     {
       "id": "C10-score-crosscheck",
@@ -1132,12 +1132,12 @@
         "max_abs_error": 0.0,
         "plays_checked": 58
       },
-      "wall_time_s": 75.29440678982064
+      "wall_time_s": 339.80138476891443
     },
     {
       "id": "C11-practice-solve-quality",
       "title": "Exploitability of practice families at default solve",
-      "verdict": "FAIL",
+      "verdict": "PARTIAL",
       "thresholds": {
         "metric": "exploitability % of starting pot = 100 * (NashConv / n_players) / spot.pot at the family default solve (NashConv from the independent oracle)",
         "pass_pct_pot": 1.0,
@@ -1149,7 +1149,7 @@
           "river-oop-bet-or-check": 0.2542917954938879,
           "river-ip-facing-bet": 0.8679899441525194,
           "preflop-hu-open": 0.3395966535641448,
-          "preflop-3max-open": 7.178557716186867,
+          "preflop-3max-open": 0.1429519732687025,
           "flop-cbet": 1.1219704857746216,
           "turn-barrel": 0.5798621135646762
         },
@@ -1158,12 +1158,12 @@
           "river-oop-bet-or-check": "PASS",
           "river-ip-facing-bet": "PASS",
           "preflop-hu-open": "PASS",
-          "preflop-3max-open": "FAIL",
+          "preflop-3max-open": "PASS",
           "flop-cbet": "PARTIAL",
           "turn-barrel": "PASS"
         }
       },
-      "wall_time_s": 2.5169923901557922e-05
+      "wall_time_s": 2.479972317814827e-05
     },
     {
       "id": "C12-practice-timing",
@@ -1177,13 +1177,13 @@
       },
       "evidence": {
         "cold_solve_seconds": {
-          "kuhn-intro": 0.5607821941375732,
-          "river-oop-bet-or-check": 4.467350699938834,
-          "river-ip-facing-bet": 1.8929588971659541,
-          "preflop-hu-open": 2.615009614266455,
-          "preflop-3max-open": 9.750755780842155,
-          "flop-cbet": 11.760988880880177,
-          "turn-barrel": 3.663170368410647
+          "kuhn-intro": 0.30778777226805687,
+          "river-oop-bet-or-check": 2.1094774934463203,
+          "river-ip-facing-bet": 1.6484568361192942,
+          "preflop-hu-open": 0.4840767798013985,
+          "preflop-3max-open": 11.411769268102944,
+          "flop-cbet": 3.7835120097734034,
+          "turn-barrel": 2.780798297841102
         },
         "per_family_verdict": {
           "kuhn-intro": "PASS",
@@ -1217,7 +1217,7 @@
           },
           "preflop-3max-open": {
             "algorithm": "vanilla-cfr",
-            "iterations": 100,
+            "iterations": 5000,
             "seed": null
           },
           "flop-cbet": {
@@ -1232,7 +1232,7 @@
           }
         }
       },
-      "wall_time_s": 4.6729110181331635e-05
+      "wall_time_s": 2.232985571026802e-05
     },
     {
       "id": "C13-equity-icm",
@@ -1267,7 +1267,7 @@
           }
         }
       },
-      "wall_time_s": 0.0051786890253424644
+      "wall_time_s": 0.0028058872558176517
     },
     {
       "id": "C14-scale",
@@ -1284,61 +1284,61 @@
             "combos_per_side": 2,
             "deals": 4,
             "infosets": 8,
-            "build_s": 0.00031307898461818695,
+            "build_s": 0.000329810194671154,
             "iterations_timed": 5,
-            "seconds_per_iteration": 0.00402898695319891
+            "seconds_per_iteration": 0.0016754480078816415
           },
           {
             "combos_per_side": 4,
             "deals": 14,
             "infosets": 16,
-            "build_s": 0.0033747758716344833,
+            "build_s": 0.0011885929852724075,
             "iterations_timed": 5,
-            "seconds_per_iteration": 0.01138790398836136
+            "seconds_per_iteration": 0.006140770018100738
           },
           {
             "combos_per_side": 8,
             "deals": 61,
             "infosets": 32,
-            "build_s": 0.02069320296868682,
+            "build_s": 0.009164742194116116,
             "iterations_timed": 5,
-            "seconds_per_iteration": 0.08630761103704572
+            "seconds_per_iteration": 0.03489532824605703
           },
           {
             "combos_per_side": 16,
             "deals": 235,
             "infosets": 64,
-            "build_s": 0.17350603127852082,
+            "build_s": 0.09601030126214027,
             "iterations_timed": 5,
-            "seconds_per_iteration": 0.4289897488430142
+            "seconds_per_iteration": 0.25717150159180163
           },
           {
             "combos_per_side": 32,
             "deals": 918,
             "infosets": 128,
-            "build_s": 3.0115112336352468,
+            "build_s": 1.378924231044948,
             "iterations_timed": 5,
-            "seconds_per_iteration": 7.132891049422324
+            "seconds_per_iteration": 3.010377388168126
           },
           {
             "combos_per_side": 48,
             "deals": 2113,
             "infosets": 192,
-            "build_s": 12.694613019004464,
+            "build_s": 8.610710227862,
             "iterations_timed": 2,
-            "seconds_per_iteration": 29.318937952630222
+            "seconds_per_iteration": 20.47195565653965
           }
         ],
-        "loglog_slope_time_vs_deals": 1.4387115474971244,
-        "exponent_used": 1.4387115474971244,
+        "loglog_slope_time_vs_deals": 1.484506117875666,
+        "exponent_used": 1.484506117875666,
         "target_combos_per_side": 100,
         "target_deals": 9171.006944444443,
-        "projected_seconds_per_iteration": 242.2992443412341,
+        "projected_seconds_per_iteration": 180.94975468058342,
         "target_measured_directly": false,
-        "projected_seconds_1000_iterations": 242299.2443412341,
+        "projected_seconds_1000_iterations": 180949.75468058343,
         "note": "single bet size, river only; real multi-size / multi-street trees are larger"
       },
-      "wall_time_s": 112.87801687605679
+      "wall_time_s": 67.60044129705057
     },
     {
       "id": "C15-all-in",
@@ -1368,7 +1368,7 @@
           }
         }
       },
-      "wall_time_s": 0.6200424660928547
+      "wall_time_s": 0.32690309872850776
     },
     {
       "id": "C16-mixed-strategy",
@@ -1405,7 +1405,7 @@
           }
         }
       },
-      "wall_time_s": 1.5039928257465363e-05
+      "wall_time_s": 1.3689976185560226e-05
     }
   ],
   "capabilities": [
@@ -1440,37 +1440,35 @@
     },
     {
       "capability": "3-max",
-      "verdict": "FAIL",
+      "verdict": "PARTIAL",
       "scope_cap": "PARTIAL",
       "evidence": {
         "C5-convergence-preflop-3p": "PASS",
         "C6-br-oracle-agreement": "PASS",
         "C7-kuhn3-analytic": "PASS",
-        "C11-practice-solve-quality[preflop-3max-open]": "FAIL",
+        "C11-practice-solve-quality[preflop-3max-open]": "PASS",
         "C12-practice-timing[preflop-3max-open]": "PASS"
       },
       "not_measured_in_this_mode": [],
       "gaps": [
-        "3-way only preflop (open/fold/call/jam trees, sampled-equity continuation); no multi-street 3-way postflop in practice; the adapter reports nash_conv=None for 3-max",
-        "C11-practice-solve-quality[preflop-3max-open] is FAIL"
+        "3-way only preflop (open/fold/call/jam trees, sampled-equity continuation); no multi-street 3-way postflop in practice; the adapter reports nash_conv=None for 3-max"
       ]
     },
     {
       "capability": "preflop",
-      "verdict": "FAIL",
+      "verdict": "PARTIAL",
       "scope_cap": "PARTIAL",
       "evidence": {
         "C5-convergence-preflop-hu": "PASS",
         "C5-convergence-preflop-3p": "PASS",
         "C11-practice-solve-quality[preflop-hu-open]": "PASS",
-        "C11-practice-solve-quality[preflop-3max-open]": "FAIL",
+        "C11-practice-solve-quality[preflop-3max-open]": "PASS",
         "C12-practice-timing[preflop-hu-open]": "PASS",
         "C12-practice-timing[preflop-3max-open]": "PASS"
       },
       "not_measured_in_this_mode": [],
       "gaps": [
-        "preflop leaves are settled by sampled-board showdown equity (no postflop play), tiny ranges",
-        "C11-practice-solve-quality[preflop-3max-open] is FAIL"
+        "preflop leaves are settled by sampled-board showdown equity (no postflop play), tiny ranges"
       ]
     },
     {
