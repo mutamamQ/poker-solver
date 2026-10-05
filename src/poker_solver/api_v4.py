@@ -546,6 +546,8 @@ def dispatch_v4(data: dict[str, Any]) -> dict[str, Any]:
             "practice-list-spots",
             "practice-solve-spot",
             "practice-submit-play",
+            "practice-progress",
+            "practice-leaderboard",
         },
     )
     if operation.startswith("practice-"):

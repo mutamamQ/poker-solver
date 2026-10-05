@@ -763,3 +763,7 @@ R1: CLEAN. R3: CLEAN. R2/R4: 1 MINOR (F-R4-1: leading-CRLF re-read bypassed 64 K
 Repaired by orchestrator: parse_request re-applies the >65536 guard after each skipped blank line -> 414 JSON with security headers; regression test added. Verified live on :7777 (both auditor repros -> 414; leading CRLF health -> 200) and fuzz re-run: 428 cases, 396x400 + 32x200, PROBLEMS 0.
 Single-line, test-locked fix; no further audit round (audit converged: R1/R3 clean, R2 only this reproduced minor).
 Final full suite: 1026 passed.
+
+## W4 plan (2026-10-05T03:29:27Z) — completion per W4_COMPLETION_BRIEF.md
+Decisions: W4 = 5 parallel bryant-opus-55 implementers (A families+adapter, B disk solve cache, C progress tracker+API+CLI, D UI, E solver-evaluation benchmark), contract research/practice-mode/w4/CONTRACT.md. W5 = 3 non-author auditors + docs writer (PRACTICE_MODE.md, docs/). Repair, re-audit until clean, tag practice-mode-complete, push.
+Orchestrator pre-work: api_v4 allows practice-progress/practice-leaderboard; tests/conftest.py isolates cache/data dirs.
