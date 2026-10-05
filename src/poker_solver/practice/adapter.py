@@ -434,11 +434,12 @@ class SolverAdapter:
                 return hit
             flight = self._inflight.get(key)
             if flight is None:
-                flight = self._inflight[key] = [threading.Lock(), 0, None]
+                flight = self._inflight[key] = [threading.Lock(), 0, None, None]
             flight[1] += 1
         # Single flight: concurrent cold requests for one params_hash serialize on a
         # per-key lock; followers find the leader's result in the cache instead of
-        # solving again (if the leader failed, the next one solves itself).
+        # solving again. If the leader failed, followers that were already waiting
+        # get the leader's error instead of re-running the failing solve (W6 N1).
         try:
             with flight[0]:
                 with self._lock:
@@ -447,7 +448,13 @@ class SolverAdapter:
                     hit = flight[2]  # leader's result even if the cache did not keep it
                 if hit is not None:
                     return hit
-                flight[2] = self._solve_cold(spot, key)
+                if flight[3] is not None:
+                    raise flight[3]
+                try:
+                    flight[2] = self._solve_cold(spot, key)
+                except BaseException as exc:
+                    flight[3] = exc
+                    raise
                 return flight[2]
         finally:
             with self._lock:

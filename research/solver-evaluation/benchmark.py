@@ -250,7 +250,7 @@ CAPABILITY_RULES: dict[str, tuple[tuple[str, ...], str, str]] = {
         + _fam(Q, "preflop-3max-open") + _fam(T, "preflop-3max-open"),
         "PARTIAL",
         "3-way only preflop (open/fold/call/jam trees, sampled-equity continuation); no multi-street "
-        "3-way postflop in practice; the adapter reports nash_conv=None for 3-max",
+        "3-way postflop in practice; 3-max nash_conv is reported by practice/nplayer_metrics.py (W5)",
     ),
     "preflop": (
         ("C5-convergence-preflop-hu", "C5-convergence-preflop-3p")

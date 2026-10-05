@@ -138,13 +138,14 @@ The bundled `examples/phase3/` and `examples/phase3_*.json` files are non-presol
 
 ## Practice mode
 
-Branch `feat/practice-mode` adds a GTO Wizard-style practice mode: a local web UI and API where you play solver-generated spots and are graded by EV loss against a runtime solve. It covers Kuhn, river, flop, turn, heads-up preflop and 3-max preflop families.
+Branch `feat/practice-mode` (tag `practice-mode-w5`, commit `72f0053`) adds a GTO Wizard-style practice mode: a local web UI and API where you play solver-generated spots and are graded by EV loss against a runtime solve. It covers Kuhn, river, flop, turn, heads-up preflop and 3-max preflop families (72 spots at seed 0).
 
 ```bash
 .venv/bin/python -m poker_solver.practice.server --port 7777   # open http://127.0.0.1:7777/
+scripts/practice_smoke.sh 7794                                 # self-contained smoke test (7 checks)
 ```
 
-See `PRACTICE_MODE.md` for how to run it, how scoring works, the known limitations, and how to read the solver evaluation. The solver evaluation's current verdict is in `research/solver-evaluation/results.md`. Detailed docs are in `docs/practice-mode/`.
+See `PRACTICE_MODE.md` for how to run it, how scoring works, the known limitations, and how to read the solver evaluation. Detailed docs are in `docs/practice-mode/`. The solver evaluation's current verdict is in `research/solver-evaluation/results.md`: at `72f0053` it is **overall FAIL** (C14: does not scale to realistic range sizes) and **correctness-only PARTIAL**; every practice family is ≤ 1 % pot exploitable at its default solve except `flop-cbet` (1.12 %).
 
 ## Utility convention
 

@@ -1,0 +1,506 @@
+{
+ "kuhn-intro/820b58289136": {
+  "init": {
+   "btns": [
+    "Check",
+    "Bet"
+   ],
+   "submitDisabled": true,
+   "sizeVis": false,
+   "size": "5",
+   "presets": [],
+   "active": "BUTTON.action-btn act-check",
+   "err": "",
+   "hist": [
+    "First to act"
+   ]
+  },
+  "f": [
+   [
+    "Check",
+    "Bet"
+   ],
+   [],
+   "BODY.",
+   true
+  ],
+  "c": [
+   [
+    "Check*",
+    "Bet"
+   ],
+   [],
+   "BUTTON.action-btn act-check selected",
+   false
+  ],
+  "b": [
+   [
+    "Check",
+    "Bet*"
+   ],
+   [],
+   "BUTTON.action-btn act-bet selected",
+   false
+  ],
+  "a": [
+   [
+    "Check",
+    "Bet*"
+   ],
+   [],
+   "BODY.",
+   false
+  ]
+ },
+ "kuhn-intro/105d1efb82cd": {
+  "init": {
+   "btns": [
+    "Fold",
+    "Call"
+   ],
+   "submitDisabled": true,
+   "sizeVis": false,
+   "size": "5",
+   "presets": [],
+   "active": "BUTTON.action-btn act-fold",
+   "err": "",
+   "hist": [
+    "Bet"
+   ]
+  },
+  "f": [
+   [
+    "Fold*",
+    "Call"
+   ],
+   [],
+   "BUTTON.action-btn act-fold selected",
+   false
+  ],
+  "c": [
+   [
+    "Fold",
+    "Call*"
+   ],
+   [],
+   "BUTTON.action-btn act-call selected",
+   false
+  ],
+  "b": [
+   [
+    "Fold",
+    "Call*"
+   ],
+   [],
+   "BODY.",
+   false
+  ],
+  "a": [
+   [
+    "Fold",
+    "Call*"
+   ],
+   [],
+   "BODY.",
+   false
+  ]
+ },
+ "river-oop-bet-or-check/e79981f9d62d": {
+  "init": {
+   "btns": [
+    "Check",
+    "Bet 33"
+   ],
+   "submitDisabled": true,
+   "sizeVis": true,
+   "size": "33",
+   "presets": [
+    "33"
+   ],
+   "active": "BUTTON.action-btn act-check",
+   "err": "",
+   "hist": [
+    "First to act"
+   ]
+  },
+  "f": [
+   [
+    "Check",
+    "Bet 33"
+   ],
+   [
+    "33"
+   ],
+   "BODY.",
+   true
+  ],
+  "c": [
+   [
+    "Check*",
+    "Bet 33"
+   ],
+   [
+    "33"
+   ],
+   "BUTTON.action-btn act-check selected",
+   false
+  ],
+  "b": [
+   [
+    "Check",
+    "Bet 33*"
+   ],
+   [
+    "33*"
+   ],
+   "action-size.",
+   false
+  ],
+  "a": [
+   [
+    "Check",
+    "Bet 33*"
+   ],
+   [
+    "33*"
+   ],
+   "BODY.",
+   false
+  ]
+ },
+ "river-ip-facing-bet/5f165e73c53c": {
+  "init": {
+   "btns": [
+    "Fold",
+    "Call"
+   ],
+   "submitDisabled": true,
+   "sizeVis": false,
+   "size": "33",
+   "presets": [],
+   "active": "BUTTON.action-btn act-fold",
+   "err": "",
+   "hist": [
+    "Bet 33"
+   ]
+  },
+  "f": [
+   [
+    "Fold*",
+    "Call"
+   ],
+   [],
+   "BUTTON.action-btn act-fold selected",
+   false
+  ],
+  "c": [
+   [
+    "Fold",
+    "Call*"
+   ],
+   [],
+   "BUTTON.action-btn act-call selected",
+   false
+  ],
+  "b": [
+   [
+    "Fold",
+    "Call*"
+   ],
+   [],
+   "BODY.",
+   false
+  ],
+  "a": [
+   [
+    "Fold",
+    "Call*"
+   ],
+   [],
+   "BODY.",
+   false
+  ]
+ },
+ "preflop-hu-open/6db0bd5d4d67": {
+  "init": {
+   "btns": [
+    "Fold",
+    "Call 2",
+    "Raise 4",
+    "Raise 30"
+   ],
+   "submitDisabled": true,
+   "sizeVis": true,
+   "size": "4",
+   "presets": [
+    "4",
+    "30"
+   ],
+   "active": "BUTTON.action-btn act-fold",
+   "err": "",
+   "hist": [
+    "First to act"
+   ]
+  },
+  "f": [
+   [
+    "Fold*",
+    "Call 2",
+    "Raise 4",
+    "Raise 30"
+   ],
+   [
+    "4",
+    "30"
+   ],
+   "BUTTON.action-btn act-fold selected",
+   false
+  ],
+  "c": [
+   [
+    "Fold",
+    "Call 2*",
+    "Raise 4",
+    "Raise 30"
+   ],
+   [
+    "4",
+    "30"
+   ],
+   "BUTTON.action-btn act-call selected",
+   false
+  ],
+  "b": [
+   [
+    "Fold",
+    "Call 2",
+    "Raise 4",
+    "Raise 30*"
+   ],
+   [
+    "4",
+    "30*"
+   ],
+   "action-size.",
+   false
+  ],
+  "a": [
+   [
+    "Fold",
+    "Call 2",
+    "Raise 4",
+    "Raise 30*"
+   ],
+   [
+    "4",
+    "30*"
+   ],
+   "BODY.",
+   false
+  ]
+ },
+ "preflop-3max-open/a99ed8603bf2": {
+  "init": {
+   "btns": [
+    "Fold",
+    "Call 2",
+    "Raise 5",
+    "Raise 40"
+   ],
+   "submitDisabled": true,
+   "sizeVis": true,
+   "size": "5",
+   "presets": [
+    "5",
+    "40"
+   ],
+   "active": "BUTTON.action-btn act-fold",
+   "err": "",
+   "hist": [
+    "Fold"
+   ]
+  },
+  "f": [
+   [
+    "Fold*",
+    "Call 2",
+    "Raise 5",
+    "Raise 40"
+   ],
+   [
+    "5",
+    "40"
+   ],
+   "BUTTON.action-btn act-fold selected",
+   false
+  ],
+  "c": [
+   [
+    "Fold",
+    "Call 2*",
+    "Raise 5",
+    "Raise 40"
+   ],
+   [
+    "5",
+    "40"
+   ],
+   "BUTTON.action-btn act-call selected",
+   false
+  ],
+  "b": [
+   [
+    "Fold",
+    "Call 2",
+    "Raise 5",
+    "Raise 40*"
+   ],
+   [
+    "5",
+    "40*"
+   ],
+   "action-size.",
+   false
+  ],
+  "a": [
+   [
+    "Fold",
+    "Call 2",
+    "Raise 5",
+    "Raise 40*"
+   ],
+   [
+    "5",
+    "40*"
+   ],
+   "BODY.",
+   false
+  ]
+ },
+ "flop-cbet/9a471ac7b613": {
+  "init": {
+   "btns": [
+    "Check",
+    "Raise 33"
+   ],
+   "submitDisabled": true,
+   "sizeVis": true,
+   "size": "33",
+   "presets": [
+    "33"
+   ],
+   "active": "BUTTON.action-btn act-check",
+   "err": "",
+   "hist": [
+    "First to act"
+   ]
+  },
+  "f": [
+   [
+    "Check",
+    "Raise 33"
+   ],
+   [
+    "33"
+   ],
+   "BODY.",
+   true
+  ],
+  "c": [
+   [
+    "Check*",
+    "Raise 33"
+   ],
+   [
+    "33"
+   ],
+   "BUTTON.action-btn act-check selected",
+   false
+  ],
+  "b": [
+   [
+    "Check",
+    "Raise 33*"
+   ],
+   [
+    "33*"
+   ],
+   "action-size.",
+   false
+  ],
+  "a": [
+   [
+    "Check",
+    "Raise 33*"
+   ],
+   [
+    "33*"
+   ],
+   "BODY.",
+   false
+  ]
+ },
+ "turn-barrel/b95c7dba968a": {
+  "init": {
+   "btns": [
+    "Check",
+    "Raise 33"
+   ],
+   "submitDisabled": true,
+   "sizeVis": true,
+   "size": "33",
+   "presets": [
+    "33"
+   ],
+   "active": "BUTTON.action-btn act-check",
+   "err": "",
+   "hist": [
+    "First to act"
+   ]
+  },
+  "f": [
+   [
+    "Check",
+    "Raise 33"
+   ],
+   [
+    "33"
+   ],
+   "BODY.",
+   true
+  ],
+  "c": [
+   [
+    "Check*",
+    "Raise 33"
+   ],
+   [
+    "33"
+   ],
+   "BUTTON.action-btn act-check selected",
+   false
+  ],
+  "b": [
+   [
+    "Check",
+    "Raise 33*"
+   ],
+   [
+    "33*"
+   ],
+   "action-size.",
+   false
+  ],
+  "a": [
+   [
+    "Check",
+    "Raise 33*"
+   ],
+   [
+    "33*"
+   ],
+   "BODY.",
+   false
+  ]
+ }
+}

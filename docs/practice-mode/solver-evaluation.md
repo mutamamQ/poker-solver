@@ -8,8 +8,7 @@ and to 8 capability areas.
 **Source of truth:** `research/solver-evaluation/results.md` (tables) and `results.json`
 (machine-readable: host, git commit, timestamps, thresholds, all evidence). Both are rewritten
 by every full run. `research/solver-evaluation/REPORT.md` is the written verdict and gap list.
-If anything on this page disagrees with `results.md`, `results.md` is correct. A repair task may
-change C11/C15 after this page was written.
+If anything on this page disagrees with `results.md`, `results.md` is correct.
 
 ## Files
 
@@ -25,9 +24,9 @@ change C11/C15 after this page was written.
 ## Running it
 
 ```bash
-scripts/solver_eval.sh quick              # 25-60 s here; writes to a temp dir, prints the path
+scripts/solver_eval.sh quick              # ~35 s here (25-60 s); writes to a temp dir, prints the path
 scripts/solver_eval.sh quick /tmp/se      # quick mode into a chosen dir
-scripts/solver_eval.sh full               # ~5 min on the 2-CPU host; REWRITES research/solver-evaluation/results.{json,md}
+scripts/solver_eval.sh full               # ~8 min on the 2-CPU host (499 s at W5); REWRITES research/solver-evaluation/results.{json,md}
 .venv/bin/python research/solver-evaluation/benchmark.py --mode quick --out /tmp/se --only C1-kuhn-analytic
 .venv/bin/python -m pytest -q tests/test_solver_evaluation.py
 ```
@@ -85,44 +84,57 @@ Read the two headline verdicts together:
 - `correctness`: are the numbers it produces right? Yes where independently checkable, apart from the
   value-neutral all-in tree defect (C15).
 
-## Current verdict (results.md as committed at `5a3e61f`)
+## Current verdict (results.md at `72f0053`, tag `practice-mode-w5`)
 
-The numbers below come from `research/solver-evaluation/results.md` as committed at `5a3e61f`.
-The run was recorded on 2026-10-05 against commit `ed886c8` with the W4 changes present in the worktree
-(`dirty=True`) on a 2-CPU host under load ≈ 5. Re-run `scripts/solver_eval.sh full` and read the
-regenerated `results.md` for current values.
+The numbers below come from `research/solver-evaluation/results.md` as committed at `72f0053`. The
+full run was recorded on 2026-10-05 (07:50:44 → 07:59:03 UTC, 499 s) against commit `2a6f57c`
+(the W5 code) with a clean tree (`dirty=False`) on a 2-CPU host, load ≈ 3 at start. `72f0053`
+changes only `results.json` / `results.md`, so the numbers describe the code at the tag.
 
 - **Overall: FAIL.** **Correctness-only: PARTIAL.**
-- Criteria: 17 PASS, 1 PARTIAL (C15 all-in), 2 FAIL (C11 practice solve quality, C14 scale).
+- Criteria: 17 PASS, 2 PARTIAL (C11 practice solve quality, C15 all-in), 1 FAIL (C14 scale).
 
 | failing / partial item | measured | why |
 |---|---|---|
-| C11 practice solve quality: FAIL | `preflop-3max-open` 7.179 % pot at its 100-iteration default. `flop-cbet` 1.122 % (PARTIAL). Others 0.25–0.87 % | the default iteration budget is too low for 3-max. The solver converges with more iterations (C5 3p: 3.09 → 0.055 over 10 → 2560 iterations) |
-| C14 scale: FAIL | ≈ 29 s/iteration measured at 48 combos/side; projected 2.4e5 s per 1000 iterations at 100 combos/side | pure-Python full-tree vanilla CFR is superlinear in deals (≈ deals^1.44) |
-| C15 all-in: PARTIAL | `multistreet` offers a `RAISE` whose target equals the call target when facing an all-in, and gives all-in seats CHECK-only decision nodes; value gap 0.0 | structural defect, value-neutral |
+| C14 scale: FAIL | ≈ 20.5 s/iteration measured at 48 combos/side; s/iteration grows as deals^1.48; projected ≈ 181 s/iteration → 1.81e5 s per 1000 iterations at 100 combos/side | pure-Python full-tree vanilla CFR is superlinear in deals |
+| C11 practice solve quality: PARTIAL | `flop-cbet` 1.122 % pot at its 200-iteration default (PARTIAL). Every other family PASS: `preflop-3max-open` 0.143 %, others 0.25–0.87 % | flop-cbet needs more iterations; not changed in W5 |
+| C15 all-in: PARTIAL | `multistreet` offers 24 `RAISE` actions whose target equals the call target when facing an all-in, and gives all-in seats 48 CHECK-only decision nodes; value gap 0.0 | engine-tree defect, value-neutral. Practice output merges the pseudo-raise into `CALL`, but the benchmark checks the engine tree |
 
 Capabilities at that commit:
 
 | capability | verdict |
 |---|---|
-| 2-player NL | FAIL (C14 FAIL, C15 PARTIAL, flop-cbet C11 PARTIAL; cap PARTIAL) |
-| 3-max | FAIL (C11 `preflop-3max-open` FAIL; cap PARTIAL) |
-| preflop | FAIL (C11 `preflop-3max-open` FAIL; cap PARTIAL) |
-| postflop | FAIL (C14 FAIL; cap PARTIAL) |
-| multi-street | PARTIAL |
+| 2-player NL | FAIL (C14 FAIL; C15 PARTIAL; C11 `flop-cbet` PARTIAL; cap PARTIAL) |
+| 3-max | PARTIAL (all evidence PASS incl. C11 `preflop-3max-open` 0.143 %; cap PARTIAL: preflop only) |
+| preflop | PARTIAL (all evidence PASS; cap PARTIAL: equity-settled leaves) |
+| postflop | FAIL (C14 FAIL; C11 `flop-cbet` PARTIAL; cap PARTIAL) |
+| multi-street | PARTIAL (C11 `flop-cbet` PARTIAL; cap PARTIAL) |
 | ICM | PARTIAL (evaluator only; no ICM-aware solving) |
 | mixed strategy | PASS |
 | sizing | PARTIAL (fixed menus, one size per practice spot) |
+
+Note: since W5 the adapter reports a finite n-player NashConv for 3-max (`nplayer_metrics.nash_conv_nplayer`,
+equal to the benchmark oracle `games.nash_conv_n` in `tests/test_practice_w5_repairs.py`); the stale
+"nash_conv=None" scope-cap string in `benchmark.py`/`results.*` was corrected in W6 (text only). The
+practice-spot comparisons are not part of the recorded C6 evidence (C6 runs before C10 collects
+them), but the value captured from the live API on `preflop-3max-open/a4b66447a35b`
+(0.012866 chips → 0.143 % pot) matches the C11 oracle figure for that spot.
+
+What changed versus the W4 run (recorded at `ed886c8`, dirty): `preflop-3max-open` went from
+7.18 % (100 iterations, FAIL) to 0.143 % (5000 iterations, PASS), so C11 moved FAIL → PARTIAL and
+the 3-max and preflop capabilities FAIL → PARTIAL. The C14 projection moved from 2.4e5 s to
+1.8e5 s purely from host timing noise (no scale work was done). Overall and correctness-only
+verdicts are unchanged.
 
 What passes, all against independent references computed at run time:
 - Kuhn value −1/18 under CFR (C1) and MCCFR (C2).
 - The polarized-river closed form within 0.015 (C3) and the sizing-menu value (C4).
 - NashConv decreasing on all five backends (C5).
-- The repo's best response matching an independent oracle to 1.4e-14 (C6).
+- The repo's best response matching an independent oracle to 1.4e-14 (C6, 13 comparisons).
 - The 3-player Kuhn −1/48 family (C7).
 - Determinism (C8) and parameter sensitivity (C9).
-- Practice Q / score / grade re-derived with error 0.0 over 58 plays (C10).
-- Cold solves at most 11.8 s (C12).
+- Practice Q / score / grade re-derived with error 0.0 over 58 plays on 18 spots (C10).
+- Cold solves at most 11.4 s at the family defaults (C12; 3-max 11.4 s, flop-cbet 3.8 s).
 - Exact equity and ICM (C13).
 - Strictly mixed equilibria reproduced (C16).
 
@@ -140,5 +152,5 @@ first: if the commit there is not the one you are evaluating, the numbers are st
 - Grades are exact with respect to the solve that was run (C10). That solve is only as converged
   as its iteration count. `solver_self_loss` in each score shows the solver noise. Raise the
   iterations (UI Re-solve, `solve.iterations`, or `warm --iterations`) when it is large.
-- The 3-max family at its default budget is noticeably exploitable (≈ 7 % pot at `5a3e61f`). Its
-  provenance has no NashConv, so the UI cannot show this.
+- At the family defaults every family is ≤ 0.87 % pot exploitable except `flop-cbet` (≈ 1.12 %).
+  The 3-max family now reports its NashConv, so the UI shows it in the provenance.

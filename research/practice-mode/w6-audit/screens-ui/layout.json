@@ -1,0 +1,1286 @@
+{
+ "turn-barrel/b95c7dba968a@360": {
+  "vw": 1270,
+  "pageSW": 1270,
+  "bodySW": 1270,
+  "progress-spots": {
+   "sw": 884,
+   "cw": 884,
+   "box": [
+    343,
+    850.5,
+    1227,
+    1031.1
+   ],
+   "clipped": [],
+   "overflowCells": [],
+   "panel": [
+    324,
+    725.7,
+    1246,
+    1048.1
+   ],
+   "thVisible": true
+  },
+  "leaderboard-table": {
+   "sw": 884,
+   "cw": 884,
+   "box": [
+    343,
+    1119.1,
+    1227,
+    1181.1
+   ],
+   "clipped": [],
+   "overflowCells": [],
+   "panel": [
+    324,
+    1064.1,
+    1246,
+    1198.1
+   ],
+   "thVisible": true
+  },
+  "pp": [
+   324,
+   725.7,
+   1246,
+   1048.1
+  ],
+  "lp": [
+   324,
+   1064.1,
+   1246,
+   1198.1
+  ],
+  "panelsOverlap": 0,
+  "boxes": {
+   "seat-villain": [
+    669.9,
+    143.8,
+    900.1,
+    219.8
+   ],
+   "spot-meta": [
+    937.7,
+    100.5,
+    1045.5,
+    120.3
+   ],
+   "spot-title": [
+    343,
+    97,
+    925.7,
+    111.8
+   ],
+   "board-cards": [
+    688,
+    236.9,
+    882,
+    298.9
+   ],
+   "pot-value": [
+    797.8,
+    313.9,
+    821.1,
+    333.6
+   ],
+   "hero-hand": [
+    764.8,
+    357.8,
+    874.8,
+    430.8
+   ],
+   "table-felt": [
+    405,
+    157.8,
+    1165,
+    417.8
+   ]
+  },
+  "tableOverlaps": [],
+  "btnOverlaps": [],
+  "topbarOverlaps": [],
+  "offscreen": []
+ },
+ "turn-barrel/b95c7dba968a@600": {
+  "vw": 590,
+  "pageSW": 590,
+  "bodySW": 590,
+  "progress-spots": {
+   "sw": 510,
+   "cw": 510,
+   "box": [
+    35,
+    1406.4,
+    555,
+    1766.4
+   ],
+   "clipped": [],
+   "overflowCells": [],
+   "panel": [
+    16,
+    1281.7,
+    574,
+    1783.4
+   ],
+   "thVisible": false
+  },
+  "leaderboard-table": {
+   "sw": 520,
+   "cw": 520,
+   "box": [
+    35,
+    1854.4,
+    555,
+    2014.7
+   ],
+   "clipped": [],
+   "overflowCells": [],
+   "panel": [
+    16,
+    1799.4,
+    574,
+    2031.7
+   ],
+   "thVisible": false
+  },
+  "pp": [
+   16,
+   1281.7,
+   574,
+   1783.4
+  ],
+  "lp": [
+   16,
+   1799.4,
+   574,
+   2031.7
+  ],
+  "panelsOverlap": 0,
+  "boxes": {
+   "seat-villain": [
+    179.9,
+    699.8,
+    410.1,
+    775.8
+   ],
+   "spot-meta": [
+    35,
+    660.1,
+    142.9,
+    679.8
+   ],
+   "spot-title": [
+    35,
+    610.5,
+    555,
+    640.1
+   ],
+   "board-cards": [
+    198,
+    792.9,
+    392,
+    854.9
+   ],
+   "pot-value": [
+    307.8,
+    869.9,
+    331.1,
+    889.6
+   ],
+   "hero-hand": [
+    274.8,
+    913.8,
+    384.8,
+    986.8
+   ],
+   "table-felt": [
+    35,
+    713.8,
+    555,
+    973.8
+   ]
+  },
+  "tableOverlaps": [],
+  "btnOverlaps": [],
+  "topbarOverlaps": [],
+  "offscreen": []
+ },
+ "turn-barrel/b95c7dba968a@900": {
+  "vw": 890,
+  "pageSW": 890,
+  "bodySW": 890,
+  "progress-spots": {
+   "sw": 820,
+   "cw": 820,
+   "box": [
+    35,
+    1314.9,
+    855,
+    1495.6
+   ],
+   "clipped": [],
+   "overflowCells": [],
+   "panel": [
+    16,
+    1190.2,
+    874,
+    1512.6
+   ],
+   "thVisible": true
+  },
+  "leaderboard-table": {
+   "sw": 820,
+   "cw": 820,
+   "box": [
+    35,
+    1583.6,
+    855,
+    1645.5
+   ],
+   "clipped": [],
+   "overflowCells": [],
+   "panel": [
+    16,
+    1528.6,
+    874,
+    1662.5
+   ],
+   "thVisible": true
+  },
+  "pp": [
+   16,
+   1190.2,
+   874,
+   1512.6
+  ],
+  "lp": [
+   16,
+   1528.6,
+   874,
+   1662.5
+  ],
+  "panelsOverlap": 0,
+  "boxes": {
+   "seat-villain": [
+    329.9,
+    608.3,
+    560.1,
+    684.3
+   ],
+   "spot-meta": [
+    629.7,
+    565,
+    737.5,
+    584.7
+   ],
+   "spot-title": [
+    35,
+    561.5,
+    617.7,
+    576.3
+   ],
+   "board-cards": [
+    348,
+    701.4,
+    542,
+    763.4
+   ],
+   "pot-value": [
+    457.8,
+    778.4,
+    481.1,
+    798.1
+   ],
+   "hero-hand": [
+    424.8,
+    822.3,
+    534.8,
+    895.3
+   ],
+   "table-felt": [
+    65,
+    622.3,
+    825,
+    882.3
+   ]
+  },
+  "tableOverlaps": [],
+  "btnOverlaps": [],
+  "topbarOverlaps": [],
+  "offscreen": []
+ },
+ "turn-barrel/b95c7dba968a@1100": {
+  "vw": 1090,
+  "pageSW": 1090,
+  "bodySW": 1090,
+  "progress-spots": {
+   "sw": 704,
+   "cw": 704,
+   "box": [
+    343,
+    849.8,
+    1047,
+    1086.1
+   ],
+   "clipped": [],
+   "overflowCells": [],
+   "panel": [
+    324,
+    725,
+    1066,
+    1103.1
+   ],
+   "thVisible": true
+  },
+  "leaderboard-table": {
+   "sw": 704,
+   "cw": 704,
+   "box": [
+    343,
+    1174.1,
+    1047,
+    1236
+   ],
+   "clipped": [],
+   "overflowCells": [],
+   "panel": [
+    324,
+    1119.1,
+    1066,
+    1253
+   ],
+   "thVisible": true
+  },
+  "pp": [
+   324,
+   725,
+   1066,
+   1103.1
+  ],
+  "lp": [
+   324,
+   1119.1,
+   1066,
+   1253
+  ],
+  "panelsOverlap": 0,
+  "boxes": {
+   "seat-villain": [
+    579.9,
+    143.1,
+    810.1,
+    219.1
+   ],
+   "spot-meta": [
+    937.7,
+    99.8,
+    1045.5,
+    119.5
+   ],
+   "spot-title": [
+    343,
+    96.3,
+    925.7,
+    111.1
+   ],
+   "board-cards": [
+    598,
+    236.2,
+    792,
+    298.2
+   ],
+   "pot-value": [
+    707.8,
+    313.2,
+    731.1,
+    332.9
+   ],
+   "hero-hand": [
+    674.8,
+    357.1,
+    784.8,
+    430.1
+   ],
+   "table-felt": [
+    343,
+    157.1,
+    1047,
+    417.1
+   ]
+  },
+  "tableOverlaps": [],
+  "btnOverlaps": [],
+  "topbarOverlaps": [],
+  "offscreen": []
+ },
+ "turn-barrel/b95c7dba968a@1400": {
+  "vw": 1390,
+  "pageSW": 1390,
+  "bodySW": 1390,
+  "progress-spots": {
+   "sw": 1004,
+   "cw": 1004,
+   "box": [
+    343,
+    850.5,
+    1347,
+    1031.1
+   ],
+   "clipped": [],
+   "overflowCells": [],
+   "panel": [
+    324,
+    725.7,
+    1366,
+    1048.1
+   ],
+   "thVisible": true
+  },
+  "leaderboard-table": {
+   "sw": 1004,
+   "cw": 1004,
+   "box": [
+    343,
+    1119.1,
+    1347,
+    1181.1
+   ],
+   "clipped": [],
+   "overflowCells": [],
+   "panel": [
+    324,
+    1064.1,
+    1366,
+    1198.1
+   ],
+   "thVisible": true
+  },
+  "pp": [
+   324,
+   725.7,
+   1366,
+   1048.1
+  ],
+  "lp": [
+   324,
+   1064.1,
+   1366,
+   1198.1
+  ],
+  "panelsOverlap": 0,
+  "boxes": {
+   "seat-villain": [
+    729.9,
+    143.8,
+    960.1,
+    219.8
+   ],
+   "spot-meta": [
+    937.7,
+    100.5,
+    1045.5,
+    120.3
+   ],
+   "spot-title": [
+    343,
+    97,
+    925.7,
+    111.8
+   ],
+   "board-cards": [
+    748,
+    236.9,
+    942,
+    298.9
+   ],
+   "pot-value": [
+    857.8,
+    313.9,
+    881.1,
+    333.6
+   ],
+   "hero-hand": [
+    824.8,
+    357.8,
+    934.8,
+    430.8
+   ],
+   "table-felt": [
+    465,
+    157.8,
+    1225,
+    417.8
+   ]
+  },
+  "tableOverlaps": [],
+  "btnOverlaps": [],
+  "topbarOverlaps": [],
+  "offscreen": []
+ },
+ "turn-barrel/b95c7dba968a@1600": {
+  "vw": 1590,
+  "pageSW": 1590,
+  "bodySW": 1590,
+  "progress-spots": {
+   "sw": 1194,
+   "cw": 1194,
+   "box": [
+    343,
+    850.5,
+    1537,
+    980.8
+   ],
+   "clipped": [],
+   "overflowCells": [],
+   "panel": [
+    324,
+    725.7,
+    1556,
+    997.8
+   ],
+   "thVisible": true
+  },
+  "leaderboard-table": {
+   "sw": 1194,
+   "cw": 1194,
+   "box": [
+    343,
+    1068.8,
+    1537,
+    1130.7
+   ],
+   "clipped": [],
+   "overflowCells": [],
+   "panel": [
+    324,
+    1013.8,
+    1556,
+    1147.7
+   ],
+   "thVisible": true
+  },
+  "pp": [
+   324,
+   725.7,
+   1556,
+   997.8
+  ],
+  "lp": [
+   324,
+   1013.8,
+   1556,
+   1147.7
+  ],
+  "panelsOverlap": 0,
+  "boxes": {
+   "seat-villain": [
+    824.9,
+    143.8,
+    1055.1,
+    219.8
+   ],
+   "spot-meta": [
+    937.7,
+    100.5,
+    1045.5,
+    120.3
+   ],
+   "spot-title": [
+    343,
+    97,
+    925.7,
+    111.8
+   ],
+   "board-cards": [
+    843,
+    236.9,
+    1037,
+    298.9
+   ],
+   "pot-value": [
+    952.8,
+    313.9,
+    976.1,
+    333.6
+   ],
+   "hero-hand": [
+    919.8,
+    357.8,
+    1029.8,
+    430.8
+   ],
+   "table-felt": [
+    560,
+    157.8,
+    1320,
+    417.8
+   ]
+  },
+  "tableOverlaps": [],
+  "btnOverlaps": [],
+  "topbarOverlaps": [],
+  "offscreen": []
+ },
+ "preflop-3max-open/a4b66447a35b@360": {
+  "vw": 350,
+  "pageSW": 350,
+  "bodySW": 350,
+  "progress-spots": {
+   "sw": 294,
+   "cw": 294,
+   "box": [
+    23,
+    1977.9,
+    327,
+    2337.9
+   ],
+   "clipped": [],
+   "overflowCells": [],
+   "panel": [
+    10,
+    1789.4,
+    340,
+    2350.9
+   ],
+   "thVisible": false
+  },
+  "leaderboard-table": {
+   "sw": 304,
+   "cw": 304,
+   "box": [
+    23,
+    2417.9,
+    327,
+    2578.2
+   ],
+   "clipped": [],
+   "overflowCells": [],
+   "panel": [
+    10,
+    2366.9,
+    340,
+    2591.2
+   ],
+   "thVisible": false
+  },
+  "pp": [
+   10,
+   1789.4,
+   340,
+   2350.9
+  ],
+  "lp": [
+   10,
+   2366.9,
+   340,
+   2591.2
+  ],
+  "panelsOverlap": 0,
+  "boxes": {
+   "seat-villain": [
+    82.1,
+    870.4,
+    267.9,
+    930.4
+   ],
+   "seat-villain-2": [
+    82.1,
+    940.4,
+    267.9,
+    1000.4
+   ],
+   "spot-meta": [
+    23,
+    821.7,
+    202.7,
+    841.4
+   ],
+   "spot-title": [
+    23,
+    772.1,
+    327,
+    801.7
+   ],
+   "board-cards": [
+    138.6,
+    1010.4,
+    211.4,
+    1058.4
+   ],
+   "pot-value": [
+    195.5,
+    1073.4,
+    203.3,
+    1093.1
+   ],
+   "hero-hand": [
+    162.6,
+    1114.1,
+    248.6,
+    1170.1
+   ],
+   "table-felt": [
+    23,
+    849.4,
+    327,
+    1229.7
+   ]
+  },
+  "tableOverlaps": [],
+  "btnOverlaps": [],
+  "topbarOverlaps": [],
+  "offscreen": []
+ },
+ "preflop-3max-open/a4b66447a35b@600": {
+  "vw": 590,
+  "pageSW": 590,
+  "bodySW": 590,
+  "progress-spots": {
+   "sw": 510,
+   "cw": 510,
+   "box": [
+    35,
+    1438.7,
+    555,
+    1798.7
+   ],
+   "clipped": [],
+   "overflowCells": [],
+   "panel": [
+    16,
+    1314,
+    574,
+    1815.7
+   ],
+   "thVisible": false
+  },
+  "leaderboard-table": {
+   "sw": 520,
+   "cw": 520,
+   "box": [
+    35,
+    1886.7,
+    555,
+    2047
+   ],
+   "clipped": [],
+   "overflowCells": [],
+   "panel": [
+    16,
+    1831.7,
+    574,
+    2064
+   ],
+   "thVisible": false
+  },
+  "pp": [
+   16,
+   1314,
+   574,
+   1815.7
+  ],
+  "lp": [
+   16,
+   1831.7,
+   574,
+   2064
+  ],
+  "panelsOverlap": 0,
+  "boxes": {
+   "seat-villain": [
+    77.1,
+    699.8,
+    252.9,
+    753.8
+   ],
+   "seat-villain-2": [
+    337.1,
+    699.8,
+    512.9,
+    753.8
+   ],
+   "spot-meta": [
+    35,
+    660.1,
+    214.7,
+    679.8
+   ],
+   "spot-title": [
+    35,
+    610.5,
+    555,
+    640.1
+   ],
+   "board-cards": [
+    258.6,
+    775.8,
+    331.4,
+    837.8
+   ],
+   "pot-value": [
+    315.5,
+    852.8,
+    323.3,
+    872.5
+   ],
+   "hero-hand": [
+    274.8,
+    946,
+    384.8,
+    1019
+   ],
+   "table-felt": [
+    35,
+    713.8,
+    555,
+    1006
+   ]
+  },
+  "tableOverlaps": [],
+  "btnOverlaps": [],
+  "topbarOverlaps": [],
+  "offscreen": []
+ },
+ "preflop-3max-open/a4b66447a35b@900": {
+  "vw": 890,
+  "pageSW": 890,
+  "bodySW": 890,
+  "progress-spots": {
+   "sw": 820,
+   "cw": 820,
+   "box": [
+    35,
+    1347.2,
+    855,
+    1527.8
+   ],
+   "clipped": [],
+   "overflowCells": [],
+   "panel": [
+    16,
+    1222.4,
+    874,
+    1544.8
+   ],
+   "thVisible": true
+  },
+  "leaderboard-table": {
+   "sw": 820,
+   "cw": 820,
+   "box": [
+    35,
+    1615.8,
+    855,
+    1677.8
+   ],
+   "clipped": [],
+   "overflowCells": [],
+   "panel": [
+    16,
+    1560.8,
+    874,
+    1694.8
+   ],
+   "thVisible": true
+  },
+  "pp": [
+   16,
+   1222.4,
+   874,
+   1544.8
+  ],
+  "lp": [
+   16,
+   1560.8,
+   874,
+   1694.8
+  ],
+  "panelsOverlap": 0,
+  "boxes": {
+   "seat-villain": [
+    164.7,
+    608.3,
+    340.5,
+    662.3
+   ],
+   "seat-villain-2": [
+    549.5,
+    608.3,
+    725.3,
+    662.3
+   ],
+   "spot-meta": [
+    628.7,
+    565,
+    808.4,
+    584.7
+   ],
+   "spot-title": [
+    35,
+    561.5,
+    616.7,
+    576.3
+   ],
+   "board-cards": [
+    408.6,
+    684.3,
+    481.4,
+    746.3
+   ],
+   "pot-value": [
+    465.5,
+    761.3,
+    473.3,
+    781
+   ],
+   "hero-hand": [
+    424.8,
+    854.5,
+    534.8,
+    927.5
+   ],
+   "table-felt": [
+    65,
+    622.3,
+    825,
+    914.5
+   ]
+  },
+  "tableOverlaps": [],
+  "btnOverlaps": [],
+  "topbarOverlaps": [],
+  "offscreen": []
+ },
+ "preflop-3max-open/a4b66447a35b@1100": {
+  "vw": 1090,
+  "pageSW": 1090,
+  "bodySW": 1090,
+  "progress-spots": {
+   "sw": 704,
+   "cw": 704,
+   "box": [
+    343,
+    913.7,
+    1047,
+    1150
+   ],
+   "clipped": [],
+   "overflowCells": [],
+   "panel": [
+    324,
+    789,
+    1066,
+    1167
+   ],
+   "thVisible": true
+  },
+  "leaderboard-table": {
+   "sw": 704,
+   "cw": 704,
+   "box": [
+    343,
+    1238,
+    1047,
+    1300
+   ],
+   "clipped": [],
+   "overflowCells": [],
+   "panel": [
+    324,
+    1183,
+    1066,
+    1317
+   ],
+   "thVisible": true
+  },
+  "pp": [
+   324,
+   789,
+   1066,
+   1167
+  ],
+  "lp": [
+   324,
+   1183,
+   1066,
+   1317
+  ],
+  "panelsOverlap": 0,
+  "boxes": {
+   "seat-villain": [
+    419.5,
+    170.8,
+    642.1,
+    246.8
+   ],
+   "seat-villain-2": [
+    747.8,
+    170.8,
+    970.5,
+    246.8
+   ],
+   "spot-meta": [
+    343,
+    131.1,
+    522.7,
+    150.8
+   ],
+   "spot-title": [
+    343,
+    96.3,
+    924.7,
+    111.1
+   ],
+   "board-cards": [
+    658.6,
+    250.8,
+    731.4,
+    312.8
+   ],
+   "pot-value": [
+    715.5,
+    327.8,
+    723.3,
+    347.5
+   ],
+   "hero-hand": [
+    674.8,
+    421,
+    784.8,
+    494
+   ],
+   "table-felt": [
+    343,
+    184.8,
+    1047,
+    481
+   ]
+  },
+  "tableOverlaps": [],
+  "btnOverlaps": [],
+  "topbarOverlaps": [],
+  "offscreen": []
+ },
+ "preflop-3max-open/a4b66447a35b@1400": {
+  "vw": 1390,
+  "pageSW": 1390,
+  "bodySW": 1390,
+  "progress-spots": {
+   "sw": 1004,
+   "cw": 1004,
+   "box": [
+    343,
+    886.7,
+    1347,
+    1067.4
+   ],
+   "clipped": [],
+   "overflowCells": [],
+   "panel": [
+    324,
+    762,
+    1366,
+    1084.4
+   ],
+   "thVisible": true
+  },
+  "leaderboard-table": {
+   "sw": 1004,
+   "cw": 1004,
+   "box": [
+    343,
+    1155.4,
+    1347,
+    1217.3
+   ],
+   "clipped": [],
+   "overflowCells": [],
+   "panel": [
+    324,
+    1100.4,
+    1366,
+    1234.3
+   ],
+   "thVisible": true
+  },
+  "pp": [
+   324,
+   762,
+   1366,
+   1084.4
+  ],
+  "lp": [
+   324,
+   1100.4,
+   1366,
+   1234.3
+  ],
+  "panelsOverlap": 0,
+  "boxes": {
+   "seat-villain": [
+    556.1,
+    143.8,
+    778.7,
+    219.8
+   ],
+   "seat-villain-2": [
+    911.3,
+    143.8,
+    1133.9,
+    219.8
+   ],
+   "spot-meta": [
+    936.7,
+    100.5,
+    1116.4,
+    120.3
+   ],
+   "spot-title": [
+    343,
+    97,
+    924.7,
+    111.8
+   ],
+   "board-cards": [
+    808.6,
+    223.8,
+    881.4,
+    285.8
+   ],
+   "pot-value": [
+    865.5,
+    300.8,
+    873.3,
+    320.5
+   ],
+   "hero-hand": [
+    824.8,
+    394,
+    934.8,
+    467
+   ],
+   "table-felt": [
+    465,
+    157.8,
+    1225,
+    454
+   ]
+  },
+  "tableOverlaps": [],
+  "btnOverlaps": [],
+  "topbarOverlaps": [],
+  "offscreen": []
+ },
+ "preflop-3max-open/a4b66447a35b@1600": {
+  "vw": 1590,
+  "pageSW": 1590,
+  "bodySW": 1590,
+  "progress-spots": {
+   "sw": 1194,
+   "cw": 1194,
+   "box": [
+    343,
+    886.7,
+    1537,
+    1017
+   ],
+   "clipped": [],
+   "overflowCells": [],
+   "panel": [
+    324,
+    762,
+    1556,
+    1034
+   ],
+   "thVisible": true
+  },
+  "leaderboard-table": {
+   "sw": 1194,
+   "cw": 1194,
+   "box": [
+    343,
+    1105,
+    1537,
+    1167
+   ],
+   "clipped": [],
+   "overflowCells": [],
+   "panel": [
+    324,
+    1050,
+    1556,
+    1184
+   ],
+   "thVisible": true
+  },
+  "pp": [
+   324,
+   762,
+   1556,
+   1034
+  ],
+  "lp": [
+   324,
+   1050,
+   1556,
+   1184
+  ],
+  "panelsOverlap": 0,
+  "boxes": {
+   "seat-villain": [
+    651.1,
+    143.8,
+    873.7,
+    219.8
+   ],
+   "seat-villain-2": [
+    1006.3,
+    143.8,
+    1228.9,
+    219.8
+   ],
+   "spot-meta": [
+    936.7,
+    100.5,
+    1116.4,
+    120.3
+   ],
+   "spot-title": [
+    343,
+    97,
+    924.7,
+    111.8
+   ],
+   "board-cards": [
+    903.6,
+    223.8,
+    976.4,
+    285.8
+   ],
+   "pot-value": [
+    960.5,
+    300.8,
+    968.3,
+    320.5
+   ],
+   "hero-hand": [
+    919.8,
+    394,
+    1029.8,
+    467
+   ],
+   "table-felt": [
+    560,
+    157.8,
+    1320,
+    454
+   ]
+  },
+  "tableOverlaps": [],
+  "btnOverlaps": [],
+  "topbarOverlaps": [],
+  "offscreen": []
+ }
+}

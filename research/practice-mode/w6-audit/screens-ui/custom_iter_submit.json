@@ -1,0 +1,20 @@
+{
+ "req": {
+  "version": 4,
+  "operation": "practice-submit-play",
+  "payload": {
+   "spot_id": "river-oop-bet-or-check/e79981f9d62d",
+   "play": {
+    "kind": "check",
+    "amount": 0
+   },
+   "user": "w6a2ui",
+   "solve": {
+    "iterations": 150
+   }
+  }
+ },
+ "progress": null,
+ "before": "Attempts4Spots tried3Avg best80.8Avg last47.6",
+ "after": "Attempts4Spots tried3Avg best80.8Avg last47.6"
+}

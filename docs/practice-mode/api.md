@@ -1,11 +1,12 @@
 # Practice mode API (v4 `practice-*` operations)
 
 Every example below was captured from a real call against
-`python -m poker_solver.practice.server --port 7794` at commit `5a3e61f`. Each run
-used a temporary `POKER_PRACTICE_CACHE_DIR` / `POKER_PRACTICE_DATA_DIR`. Numbers are solver
-output from that run. They change with iterations, catalog seed and solver version, so
-don't treat them as reference answers. Long arrays and the repeated `provenance.params` /
-`solved` objects are shortened, and every shortening is marked with `<...>` or `"..."`.
+`python -m poker_solver.practice.server --port 7797` at commit `72f0053` (tag
+`practice-mode-w5`). Each run used a temporary `POKER_PRACTICE_CACHE_DIR` /
+`POKER_PRACTICE_DATA_DIR`. Numbers are solver output from that run. They change with iterations,
+catalog seed and solver version, so don't treat them as reference answers. Long arrays and the
+repeated `provenance.params` / `solved` objects are shortened, and every shortening is marked with
+`<...>` or `"..."`.
 
 Source of truth for the schemas: `src/poker_solver/practice/api.py` (validation),
 `models.py` (`PracticeSpot.to_json`, `SolvedSpot.to_json`, `SolveProvenance`), `scoring.py`
@@ -38,13 +39,13 @@ curl -sS -X POST -H 'Content-Type: application/json' \
 | `seed` | int (default 0) | list, solve, submit | catalog seed; `spot_id`s are only valid for the seed that generated them |
 | `limit` | int >= 1 | list | truncate the catalog |
 | `spot_id` | string | solve, submit, progress | e.g. `river-oop-bet-or-check/e79981f9d62d` |
-| `solve` | `{algorithm?, iterations?, seed?}` | solve, submit | overrides the family default solve. `algorithm` is `vanilla-cfr` (seed must be null) or `external-sampling-mccfr` (int seed). `iterations` is 1..20000. Omitted fields take the `SolveParams` defaults (vanilla-cfr, 200, null), not the family default. Only the `allstreet` backend (`flop-cbet`) accepts MCCFR; the other backends answer `400 backend <b> supports only vanilla-cfr` |
+| `solve` | `{algorithm?, iterations?, seed?}` | solve, submit | overrides the family default solve. `algorithm` is `vanilla-cfr` (seed must be null) or `external-sampling-mccfr` (int seed). `iterations` is 1..20000. Omitted fields take the `SolveParams` defaults (vanilla-cfr, 200, null), not the family default. Only the `allstreet` backend (`flop-cbet`) accepts MCCFR; the other backends answer `400 backend <b> supports only vanilla-cfr`. On submit, an override that changes the `params_hash` disables progress recording |
 | `user` | string matching `^[A-Za-z0-9_.-]{1,32}$` (default `local`) | submit, progress | progress owner |
 
 `spot_id` is `family + "/" + 12 hex chars`. It does not depend on solve params. `params_hash` is the
 sha256 of the full canonical spot including solve params, and it keys the solve cache.
 
-Families at `5a3e61f`, 72 spots at seed 0, verified with `api list`:
+Families at `72f0053`, 72 spots at seed 0, verified with `practice-list-spots`:
 
 | family | backend | game_type | street | spots | default solve |
 |---|---|---|---|---|---|
@@ -52,7 +53,7 @@ Families at `5a3e61f`, 72 spots at seed 0, verified with `api list`:
 | `river-oop-bet-or-check` | river | heads-up | river | 12 | vanilla-cfr 200 |
 | `river-ip-facing-bet` | river | heads-up | river | 12 | vanilla-cfr 200 |
 | `preflop-hu-open` | nplayer-preflop | heads-up | preflop | 12 | vanilla-cfr 300 |
-| `preflop-3max-open` | nplayer-preflop | 3-max | preflop | 8 | vanilla-cfr 100 |
+| `preflop-3max-open` | nplayer-preflop | 3-max | preflop | 8 | vanilla-cfr 5000 |
 | `flop-cbet` | allstreet | heads-up | flop | 8 | vanilla-cfr 200 |
 | `turn-barrel` | multistreet | heads-up | turn | 8 | vanilla-cfr 200 |
 
@@ -271,7 +272,7 @@ Response (shortened):
       "iterations": 40,
       "seed": null,
       "nash_conv": 2.0196770988328083,
-      "wall_time_s": 2.186929998919368,
+      "wall_time_s": 0.5172839248552918,
       "solver_version": "0.1.0"
     },
     "legal_actions": [
@@ -373,14 +374,22 @@ Field meanings:
 - `action_values[].q`: Q(a) in chips from the hero's view. It is the expected payoff of taking `a`, with
   everyone then following the solved profile (`evaluate.py`).
 - `range_strategy`: the same infoset's strategy for every combo in the hero range (the UI grid).
-- `optimal_action`: argmax Q. `optimal_size` is its amount, or `null` for non-wagers.
-- `provenance.nash_conv`: NashConv of the solved profile when the backend exposes it. It is
-  `null` for `preflop-3max-open`.
-- Repeating the same request (same `params_hash`) returns the cached solve. In the capture, a
-  repeat `flop-cbet` solve took 0.04 s against 8.8 s cold.
+- `optimal_action`: the highest-Q action among the actions the strategy plays (probability > 0);
+  ties go to the higher probability, then legal order. It is never an action the solver does not
+  play. `optimal_size` is its amount, or `null` for non-wagers.
+- `provenance.nash_conv`: NashConv of the solved profile. It is a finite float for every family,
+  including `preflop-3max-open` (exact n-player NashConv from `nplayer_metrics.nash_conv_nplayer`).
+  It is `null` only if a backend cannot compute it; none of the current families does that.
+- Facing an all-in, the flop/turn engines list a pseudo-raise to the call amount. It is merged into
+  `CALL` in `legal_actions`, `strategy`, `action_values` and `range_strategy`, so it never appears in
+  a response (submitting it is rejected as illegal).
+- Repeating the same request (same `params_hash`) returns the cached solve. In the capture a repeat
+  3-max solve took 0.04 s against 12.3 s cold, and a repeat `flop-cbet/9a471ac7b613` solve 0.16 s
+  against 13.8 s cold (that cold flop solve overlapped other load on the host). Identical concurrent
+  requests share one solve.
 
-3-max example (`preflop-3max-open/a4b66447a35b`, family default 100 iterations, 16.3 s cold on a
-loaded 2-CPU host):
+3-max example (`preflop-3max-open/a4b66447a35b`, family default 5000 iterations, 12.3 s cold on
+the 2-CPU host at load ≈ 2.5; selected fields):
 
 ```json
 {
@@ -423,28 +432,28 @@ loaded 2-CPU host):
         "kind": "FOLD",
         "amount": 0
       },
-      "probability": 0.0024999999999999974
+      "probability": 5.0000000000028287e-05
     },
     {
       "action": {
         "kind": "CALL",
         "amount": 2
       },
-      "probability": 0.0602750179505771
+      "probability": 0.0012055003590122253
     },
     {
       "action": {
         "kind": "RAISE",
         "amount": 5
       },
-      "probability": 0.4822580883564667
+      "probability": 0.035568328637834906
     },
     {
       "action": {
         "kind": "RAISE",
         "amount": 40
       },
-      "probability": 0.4549668936929561
+      "probability": 0.9631761710031529
     }
   ],
   "action_values": [
@@ -460,36 +469,40 @@ loaded 2-CPU host):
         "kind": "CALL",
         "amount": 2
       },
-      "q": 2.8584751749985364
+      "q": 1.8678857204951183
     },
     {
       "action": {
         "kind": "RAISE",
         "amount": 5
       },
-      "q": 4.065214176841489
+      "q": 3.021154914747718
     },
     {
       "action": {
         "kind": "RAISE",
         "amount": 40
       },
-      "q": 3.816903557048693
+      "q": 3.0278378089791134
     }
   ],
   "optimal_action": {
     "kind": "RAISE",
-    "amount": 5
+    "amount": 40
   },
   "provenance": {
     "backend": "nplayer-preflop",
-    "entrypoint": "poker_solver.nplayer_preflop.create_nplayer_preflop_root+nplayer.NPlayerCFRSolver.train (terminal-table: evaluator.evaluate_seven sampled equity)",
-    "iterations": 100,
-    "nash_conv": null,
-    "wall_time_s": 16.216639581136405
+    "entrypoint": "poker_solver.nplayer_preflop.create_nplayer_preflop_root+practice.nplayer_metrics.FlatNPlayerCFR.train (bit-identical to nplayer.NPlayerCFRSolver; terminal-table: evaluator.evaluate_seven sampled equity; NashConv: nplayer_metrics.nash_conv_nplayer)",
+    "iterations": 5000,
+    "nash_conv": 0.012865677594183222,
+    "wall_time_s": 12.219819925259799
   }
 }
 ```
+
+`nash_conv` 0.01287 chips over 3 players at pot 3 is 100 × (0.01287/3)/3 ≈ 0.143 % of the pot, the
+same figure the benchmark reports for this family (C11). With 100 iterations (W4 default) this spot
+was ≈ 7.18 % and `nash_conv` was `null`.
 
 Amounts: river/Kuhn use `bet`/`check`/`call`/`fold` with a bet amount in chips. Kuhn's bet has amount
 0. Allstreet/multistreet/preflop use upper-case kinds (`CHECK`, `CALL`, `FOLD`, `RAISE`) where the
@@ -506,9 +519,15 @@ smaller size) and reported in `mapped_action` / `size_mapped` / `mappings`. An E
 for an unsolved size.
 
 Result `{user, score, solved, progress}`. `progress` is the per-spot entry after recording, or `null`
-if the store failed. A store failure never fails the submit.
+when nothing was recorded. Nothing is recorded when:
+- the effective solve is not the family default. A `solve` override counts only if it yields the
+  same `params_hash` as the family default (e.g. `solve: {}` is *not* the default for families whose
+  default iterations differ from 200; the explicit default is). Such "what if" submits are still
+  solved and scored;
+- the progress store failed (a store failure never fails the submit);
+- the server already answered 504 for this request (deadline token cancelled).
 
-Request:
+Request (family-default solve, so it is recorded):
 
 ```json
 {
@@ -518,9 +537,6 @@ Request:
     "spot_id": "river-oop-bet-or-check/e79981f9d62d",
     "play": {
       "kind": "check"
-    },
-    "solve": {
-      "iterations": 40
     },
     "user": "alice"
   }
@@ -536,20 +552,20 @@ Response (shortened):
   "result": {
     "user": "alice",
     "score": {
-      "ev_loss_chips": 4.074741596546197,
-      "ev_loss_pct_pot": 4.074741596546197,
+      "ev_loss_chips": 2.7418305694911993,
+      "ev_loss_pct_pot": 2.7418305694911993,
       "score": 0.0,
-      "grade": "Mistake",
-      "chosen_q": 52.65816908900063,
-      "best_q": 56.73291068554683,
-      "worst_q": 52.65816908900063,
-      "solver_mix_q": 55.635056183381884,
-      "solver_self_loss": 1.0978545021649424,
+      "grade": "Inaccuracy",
+      "chosen_q": 54.08361746141342,
+      "best_q": 56.82544803090462,
+      "worst_q": 54.08361746141342,
+      "solver_mix_q": 56.67770216955033,
+      "solver_self_loss": 0.1477458613542879,
       "best_action": {
         "kind": "bet",
         "amount": 33
       },
-      "feedback": "Solver: bet[33] 73.1%, check 26.9%. You: check. EV loss 4.075 chips (4.07% pot) -> Mistake. Best EV action: bet[33] (Q=+56.733). Solver noise: 1.098 chips.",
+      "feedback": "Solver: bet[33] 94.6%, check 5.4%. You: check. EV loss 2.742 chips (2.74% pot) -> Inaccuracy. Best EV action: bet[33] (Q=+56.825).",
       "mapped_action": null,
       "size_mapped": false,
       "play": {
@@ -568,25 +584,28 @@ Response (shortened):
       "attempts": 1,
       "best_score": 0.0,
       "last_score": 0.0,
-      "last_grade": "Mistake",
-      "first_at": "2026-10-05T06:09:52.699815Z",
-      "last_at": "2026-10-05T06:09:52.699815Z"
+      "last_grade": "Inaccuracy",
+      "first_at": "2026-10-05T08:02:23.748357Z",
+      "last_at": "2026-10-05T08:02:23.748357Z"
     }
   },
   "provenance": {
     "backend": "river",
     "entrypoint": "poker_solver.river.river_root+cfr.CFRSolver.train",
     "params": "<full canonical spot params, same as result.spot minus spot_id/params_hash/board_str/hero_hand_str/label>",
-    "params_hash": "4a759acbb6c2b99bab36c716a24991c45f1a37c1fc34bf5b1edef2d778b26521",
+    "params_hash": "6741d37fded10f9fa8da8cc6ac8ae0e92d8522f3b0debae9c29afe740d309ab9",
     "algorithm": "vanilla-cfr",
-    "iterations": 40,
+    "iterations": 200,
     "seed": null,
-    "nash_conv": 2.0196770988328083,
-    "wall_time_s": 2.186929998919368,
+    "nash_conv": 0.5085835909877687,
+    "wall_time_s": 4.498545798938721,
     "solver_version": "0.1.0"
   }
 }
 ```
+
+The same play with `"solve": {"iterations": 40}` is solved and scored (grade `Mistake` against the
+40-iteration solve) but returns `"progress": null` and writes nothing.
 
 Off-menu size `{"kind":"bet","amount":50}` on the same spot (menu is `[33]`), selected `score` fields:
 
@@ -616,18 +635,18 @@ Off-menu size `{"kind":"bet","amount":50}` on the same spot (menu is `[33]`), se
       }
     }
   ],
-  "feedback": "Solver: bet[33] 73.1%, check 26.9%. You: bet[33] (mapped from bet[50] -> bet[33]). EV loss 0.000 chips (0.00% pot) -> Perfect. Best EV action: bet[33] (Q=+56.733); most-weighted alternative: check (Q=+52.658). Solver noise: 1.098 chips."
+  "feedback": "Solver: bet[33] 94.6%, check 5.4%. You: bet[33] (mapped from bet[50] -> bet[33]). EV loss 0.000 chips (0.00% pot) -> Perfect. Best EV action: bet[33] (Q=+56.825); most-weighted alternative: check (Q=+54.084)."
 }
 ```
 
-Mixed play (30 % check / 70 % bet 33), selected `score` fields:
+Mixed play (30 % check / 70 % bet 33, no `user`, so it is recorded for `local`), selected `score` fields:
 
 ```json
 {
-  "chosen_q": 55.51048820658296,
-  "ev_loss_chips": 1.222422478963864,
-  "score": 69.99999999999989,
-  "grade": "Inaccuracy",
+  "chosen_q": 56.00289886005726,
+  "ev_loss_chips": 0.8225491708473598,
+  "score": 70.0,
+  "grade": "Good",
   "play": {
     "mix": [
       {
@@ -646,7 +665,7 @@ Mixed play (30 % check / 70 % bet 33), selected `score` fields:
       }
     ]
   },
-  "feedback": "Solver: bet[33] 73.1%, check 26.9%. You: check 30.0%, bet[33] 70.0%. EV loss 1.222 chips (1.22% pot) -> Inaccuracy. Best EV action: bet[33] (Q=+56.733); most-weighted alternative: check (Q=+52.658). Solver noise: 1.098 chips."
+  "feedback": "Solver: bet[33] 94.6%, check 5.4%. You: check 30.0%, bet[33] 70.0%. EV loss 0.823 chips (0.82% pot) -> Good. Best EV action: bet[33] (Q=+56.825); most-weighted alternative: check (Q=+54.084)."
 }
 ```
 
@@ -658,11 +677,12 @@ Scoring (`scoring.py`, design §5):
   the chip loss is small.
 - `grade` by `ev_loss_pct_pot`: <= 0.25 Perfect, <= 1 Good, <= 3 Inaccuracy, <= 8 Mistake, else Blunder.
 - `solver_self_loss = best_q - solver_mix_q` measures solver noise. It is 0 at an exact equilibrium
-  and is large at low iterations (1.10 chips here at 40 iterations).
+  and is large at low iterations (1.10 chips at 40 iterations, 0.148 chips at the 200-iteration default
+  on this spot).
 
 ## practice-progress
 
-Payload `{user?, spot_id?}`. Result `{user, totals: {attempts, spots_attempted, avg_best_score,
+Payload `{user?, spot_id?}`. Only family-default submits appear here (see above). Result `{user, totals: {attempts, spots_attempted, avg_best_score,
 avg_last_score}, spots: [...]}`. Timestamps are ISO-8601 UTC. Averages are `null` when the user has no
 attempts. Provenance `null`.
 
@@ -698,8 +718,8 @@ attempts. Provenance `null`.
         "best_score": 0.0,
         "last_score": 0.0,
         "last_grade": "Mistake",
-        "first_at": "2026-10-05T06:09:20.951829Z",
-        "last_at": "2026-10-05T06:09:20.951829Z"
+        "first_at": "2026-10-05T08:02:24.599331Z",
+        "last_at": "2026-10-05T08:02:24.599331Z"
       },
       {
         "spot_id": "river-oop-bet-or-check/e79981f9d62d",
@@ -710,8 +730,8 @@ attempts. Provenance `null`.
         "best_score": 100.0,
         "last_score": 100.0,
         "last_grade": "Perfect",
-        "first_at": "2026-10-05T06:09:52.699815Z",
-        "last_at": "2026-10-05T06:09:52.761018Z"
+        "first_at": "2026-10-05T08:02:23.748357Z",
+        "last_at": "2026-10-05T08:02:23.970592Z"
       }
     ]
   },
@@ -754,8 +774,8 @@ Filtered to one spot:
         "best_score": 0.0,
         "last_score": 0.0,
         "last_grade": "Mistake",
-        "first_at": "2026-10-05T06:09:20.951829Z",
-        "last_at": "2026-10-05T06:09:20.951829Z"
+        "first_at": "2026-10-05T08:02:24.599331Z",
+        "last_at": "2026-10-05T08:02:24.599331Z"
       }
     ]
   },
@@ -807,8 +827,8 @@ Provenance `null`.
         "user": "local",
         "spots_attempted": 1,
         "attempts": 1,
-        "avg_best_score": 69.99999999999989,
-        "total_best_score": 69.99999999999989
+        "avg_best_score": 70.0,
+        "total_best_score": 70.0
       }
     ]
   },
@@ -857,7 +877,12 @@ With `{"family": "kuhn-intro"}` (best per user/spot within that family only):
 | `GET /api/v4` | 405 | `{"error":"method not allowed"}` |
 | body `{"a":1,"a":2}` | 400 | `{"error":"malformed JSON: duplicate JSON key: 'a'"}` |
 | unknown path `GET /nope` | 404 | `{"error":"not found"}` |
-| solve over `POKER_PRACTICE_TIMEOUT` (tested with 1 s on the 3-max spot) | 504 | `{"error":"solve timed out"}` |
+| submit `{"kind":"raise","amount":5}` on a 3-max spot (kinds are case-sensitive) | 400 | `{"error":"play: action kind 'raise' is not legal here (legal: ['FOLD', 'CALL[2]', 'RAISE[5]', 'RAISE[40]'])"}` |
+| `practice-solve-spot` with `solve: {"algorithm":"external-sampling-mccfr","seed":0,...}` on a river spot | 400 | `{"error":"backend river supports only vanilla-cfr"}` |
+| `practice-solve-spot {"spot_id":"\ud800"}` (lone surrogate) | 400 | `{"error":"spot_id: invalid string encoding"}` |
+| submit whose solve runs over `POKER_PRACTICE_TIMEOUT` (tested with 1 s on a cold 3-max spot) | 504 | `{"error":"solve timed out"}`; no progress row is written |
 
-The server also returns 413 for bodies over 1 MiB, and 400 for a missing or invalid Content-Length, NaN/Infinity
-or excessive nesting. See `server.py`.
+The server also returns 413 for bodies over 1 MiB, and 400 for a missing or invalid Content-Length, NaN/Infinity,
+excessive nesting or a body that is not valid UTF-8 (`malformed JSON: invalid string encoding`). Progress-store
+failures answer a generic `progress store error` / `progress store unavailable`; details go to the server log only.
+See `server.py`.

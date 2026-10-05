@@ -1451,7 +1451,7 @@
       },
       "not_measured_in_this_mode": [],
       "gaps": [
-        "3-way only preflop (open/fold/call/jam trees, sampled-equity continuation); no multi-street 3-way postflop in practice; the adapter reports nash_conv=None for 3-max"
+        "3-way only preflop (open/fold/call/jam trees, sampled-equity continuation); no multi-street 3-way postflop in practice; 3-max nash_conv is reported by practice/nplayer_metrics.py (W5)"
       ]
     },
     {

@@ -892,6 +892,9 @@
       var res = data.result || {};
       state.submitted = true;
       renderResult(res.score || {}, res.solved || {});
+      if (override && res.progress === null) {
+        $("feedback-text").textContent += " Not recorded in progress: only the spot's default solve settings count.";
+      }
       if (Object.prototype.hasOwnProperty.call(res, "progress")) applySubmitProgress(res.progress);
       else { loadProgress(); loadLeaderboard(); }
     }).catch(function (err) {
@@ -951,7 +954,9 @@
 
     // Feedback
     var fb = $("feedback-text");
-    fb.textContent = score.feedback || "";
+    // Display-only: humanize raw kind tokens from the API sentence (e.g. "RAISE[40]" -> "Raise 40").
+    fb.textContent = String(score.feedback || "").replace(/\b(fold|check|call|bet|raise|allin|all-in)(?:\[(\d+(?:\.\d+)?)\])?(?![\w-])/gi,
+      function (_m, kind, amt) { return kindLabel(kind) + (amt ? " " + amt : ""); });
     if (score.size_mapped && score.mapped_action) {
       fb.textContent += " (size mapped to " + actionLabel(score.mapped_action) + ")";
     }
@@ -1079,8 +1084,9 @@
       if (!$("submit-play").disabled) { ev.preventDefault(); submitPlay(); }
       return;
     }
-    if (typing) return;
     var k = String(key || "").toLowerCase();
+    // Shortcuts stay live inside the bet-size box (B focuses it); f/c/b are never valid size input.
+    if (typing && !(ev.target && ev.target.id === "action-size" && Object.prototype.hasOwnProperty.call(KEY_KINDS, k))) return;
     if (!Object.prototype.hasOwnProperty.call(KEY_KINDS, k)) return;
     if (selectByKinds(KEY_KINDS[k])) {
       ev.preventDefault();
