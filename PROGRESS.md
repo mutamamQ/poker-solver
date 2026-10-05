@@ -723,3 +723,15 @@
 - 2026-10-05T00:57:36Z W1 ACCEPTED: bryant-opus-55 x3 produced models/catalog/adapter/evaluate, scoring/api, server + tests. Parent: wired practice-* ops into api_v4.dispatch_v4; fixed test_practice_api (vanilla seed=None per SolveParams contract; R1 test compares spot_id not full spot incl. params_hash). Full suite 990 passed (817 baseline + 173). Decisions: spot_id excludes solve; flop family PARTIAL (not in catalog, ~9.6s solves); 4 combos/side river ranges.
 
 - 2026-10-05T01:16:14Z W2 ACCEPTED: bryant-opus-55 x3 (a: index.html+app.js, b: style.css, c: server hardening + tests/test_practice_ui.py + scripts/practice_smoke.sh). Parent visual QA via browser screenshots + fixes: topbar grid-area (sidebar overlap), score number element in ring, ring grade color, mix-seg check/call/fold colors match legend, stacks list no longer reuses .seat (overlapped cards), range-row layout, q-table styling. Full suite 1007 passed. Known design-consistent quirk: score=0 with 'Inaccuracy' when the user picks the worst of 2 actions with small spread (score is normalized by spread, grade by %pot, per design sec 5).
+
+## W3 audit round 1 (2026-10-05T01:38:20Z)
+Auditors (bryant-opus-55, non-author agents): audit-1 R1 = 2 MINOR; audit-2 R2/R4 = 2 MAJOR + 2 MINOR; audit-3 R3 = 5 MINOR. All reproduced by orchestrator and repaired:
+- A2-F1 10**400 probability -> OverflowError/500: scoring._finite maps OverflowError -> ValueError (400).
+- A2-F2 deep-nested JSON -> no response: server catches RecursionError -> 400 JSON.
+- A2-F3 TRACE/unknown -> stdlib 501 HTML: send_error override -> 405 JSON + security headers on all JSON errors.
+- A2-F4 short body pins thread: PracticeHandler.timeout = 30 s.
+- A1-F1 no-hardcode test missed Q-values: added Q-value sensitivity tests (iterations x3 families, pot).
+- A1-F2 stack sensitivity untested: added stack-capped bet-size test (stack 40 vs 150 changes check freq). Decision: stack matters via shove size; catalog unchanged.
+- A3-F1 Enter after clicking action button; F2 bogus aria-disabled removed; F3 non-integer iterations rejected; F4 villain card backs count = hero card count from API; F5 mobile stacks overlap -> static flex layout <560px; plus spot rows collapsing on mobile (flex-shrink:0).
+- Backend nit: feedback 'most-weighted alternative' no longer repeats best_action.
+Regression tests: tests/test_practice_w3_regressions.py (11). Full suite 1018 passed.

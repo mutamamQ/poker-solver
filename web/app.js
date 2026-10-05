@@ -112,6 +112,7 @@
   function solveOverride() {
     var raw = $("iterations-input").value.trim();
     if (!raw) return null;
+    if (!/^[0-9]+$/.test(raw)) throw new Error("Iterations must be a positive integer.");
     var n = parseInt(raw, 10);
     if (!isFinite(n) || n <= 0) throw new Error("Iterations must be a positive integer.");
     return { iterations: n };
@@ -233,6 +234,15 @@
       .filter(function (i) { return i !== heroSeat; });
     $("villain-name").textContent = villains.length
       ? "Villain (" + villains.map(function (i) { return "P" + i; }).join(", ") + ")" : "Villain";
+
+    // Villain card backs: one per hero card (Kuhn deals 1, hold'em 2), from the API hand.
+    var backs = document.querySelector("#seat-villain .seat-cards");
+    if (backs) {
+      clear(backs);
+      (spot.hero_hand_str || []).forEach(function () {
+        var b = el("span", "card back"); b.setAttribute("aria-hidden", "true"); backs.appendChild(b);
+      });
+    }
 
     var stacks = $("stacks-list");
     clear(stacks);
@@ -362,9 +372,6 @@
       b.disabled = locked;
     });
     $("action-size").disabled = locked;
-    var sizeInput = $("action-size");
-    var sel = state.selectedAction;
-    sizeInput.setAttribute("aria-disabled", sel && SIZED_KINDS[sel.kind] ? "false" : "true");
   }
 
   // ---------------------------------------------------------------- solve
@@ -597,7 +604,9 @@
     var key = ev.key;
     if (key === "Enter") {
       if (ev.target && ev.target.id === "iterations-input") return;  // handled separately
-      if (!typing && ev.target && ev.target.tagName === "BUTTON") return; // native activation
+      if (!typing && ev.target && ev.target.tagName === "BUTTON" &&
+          !ev.target.classList.contains("action-btn") &&
+          !ev.target.classList.contains("size-preset")) return; // native activation
       if (!$("submit-play").disabled) { ev.preventDefault(); submitPlay(); }
       return;
     }

@@ -1068,3 +1068,9 @@ div.range-table .range-row { grid-template-columns: 96px minmax(120px, 1fr) minm
 .q-table { border-collapse: collapse; width: auto; min-width: 320px; }
 .q-table th, .q-table td { padding: 6px 14px; text-align: left; border-bottom: 1px solid var(--border); }
 .q-table tr.best td:first-child { font-weight: 700; color: var(--text-strong); }
+@media (max-width: 560px) {
+  .stacks { position: static; flex-direction: row; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+  .table-felt { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 14px 10px; border-radius: 28px; }
+  .table-felt .seat { position: static; transform: none; }
+}
+#spot-list .spot-item { flex-shrink: 0; }

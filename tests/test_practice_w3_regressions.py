@@ -1,0 +1,134 @@
+"""Regression tests for reproduced W3 audit findings (practice mode)."""
+from __future__ import annotations
+
+import dataclasses
+import json
+import socket
+import threading
+import time
+from http.client import HTTPConnection
+
+import pytest
+
+from poker_solver.api_v4 import dispatch_v4
+from poker_solver.practice import server as practice_server
+from poker_solver.practice.adapter import SolverAdapter
+from poker_solver.practice.catalog import generate_catalog
+from poker_solver.practice.models import SolveParams
+from poker_solver.practice.server import make_server
+
+TOL = 1e-9
+
+
+def _max_diff(a, b):
+    keys = set(a) | set(b)
+    return max(abs(a.get(k, 0.0) - b.get(k, 0.0)) for k in keys)
+
+
+@pytest.fixture()
+def live(monkeypatch):
+    monkeypatch.setattr(practice_server.PracticeHandler, "timeout", 0.5)
+    srv = make_server(port=0)
+    t = threading.Thread(target=srv.serve_forever, daemon=True)
+    t.start()
+    yield srv.server_address[1]
+    srv.shutdown()
+    srv.server_close()
+
+
+def _raw(port, data: bytes, read_timeout=5.0) -> bytes:
+    s = socket.create_connection(("127.0.0.1", port), timeout=read_timeout)
+    try:
+        s.sendall(data)
+        chunks = []
+        while True:
+            try:
+                c = s.recv(65536)
+            except socket.timeout:
+                break
+            if not c:
+                break
+            chunks.append(c)
+        return b"".join(chunks)
+    finally:
+        s.close()
+
+
+# --- audit-2 F1: huge integer probability -> ValueError (HTTP 400), not 500
+def test_huge_integer_probability_is_value_error():
+    spot = dispatch_v4({"version": 4, "operation": "practice-list-spots", "payload": {}})
+    spot_id = spot["result"]["spots"][0]["spot_id"]
+    solved = dispatch_v4({"version": 4, "operation": "practice-solve-spot",
+                          "payload": {"spot_id": spot_id, "solve": {"iterations": 20}}})
+    acts = solved["result"]["legal_actions"]
+    mix = [{"action": {"kind": a["kind"], "amount": a["amount"]}, "probability": 10 ** 400} for a in acts]
+    with pytest.raises(ValueError, match="finite"):
+        dispatch_v4({"version": 4, "operation": "practice-submit-play",
+                     "payload": {"spot_id": spot_id, "solve": {"iterations": 20}, "play": {"mix": mix}}})
+
+
+# --- audit-2 F2: deeply nested JSON -> 400 JSON error
+def test_deeply_nested_json_is_400(live):
+    body = b"[" * 5000 + b"]" * 5000
+    conn = HTTPConnection("127.0.0.1", live, timeout=10)
+    conn.request("POST", "/api/v4", body=body, headers={"Content-Type": "application/json"})
+    r = conn.getresponse()
+    assert r.status == 400
+    assert "error" in json.loads(r.read())
+
+
+# --- audit-2 F3: TRACE / unknown methods -> 405 JSON with security headers
+@pytest.mark.parametrize("method", ["TRACE", "FOO"])
+def test_unknown_methods_are_405_json(live, method):
+    conn = HTTPConnection("127.0.0.1", live, timeout=10)
+    conn.request(method, "/")
+    r = conn.getresponse()
+    assert r.status == 405
+    assert r.getheader("Content-Type", "").startswith("application/json")
+    assert r.getheader("X-Content-Type-Options") == "nosniff"
+    assert r.getheader("Content-Security-Policy")
+    assert "error" in json.loads(r.read())
+
+
+# --- audit-2 F4: short body must not pin a handler thread forever
+def test_handler_has_default_socket_timeout():
+    t = practice_server.PracticeHandler.timeout
+    assert t is not None and 0 < t <= 120
+
+
+def test_short_body_times_out(live):
+    t0 = time.monotonic()
+    _raw(live, b"POST /api/v4 HTTP/1.1\r\nHost: x\r\nContent-Length: 100\r\n"
+               b"Content-Type: application/json\r\n\r\n{\"a\":", read_timeout=5.0)
+    assert time.monotonic() - t0 < 4.0  # server closed on its socket timeout
+
+
+# --- audit-1 F1: dedicated R1 check also covers Q-values and range strategy
+@pytest.mark.parametrize("family", ["kuhn-intro", "river-oop-bet-or-check", "river-ip-facing-bet"])
+def test_iterations_change_action_values(family):
+    spot = generate_catalog(families=(family,), limit=1)[0]
+    ad = SolverAdapter()
+    lo = ad.solve(spot.with_solve(SolveParams(iterations=5)))
+    hi = ad.solve(spot.with_solve(SolveParams(iterations=300)))
+    assert _max_diff(lo.action_values, hi.action_values) > TOL
+
+
+def test_pot_change_changes_action_values():
+    spot = generate_catalog(families=("river-oop-bet-or-check",), solve=SolveParams(iterations=60), limit=1)[0]
+    ad = SolverAdapter()
+    a = ad.solve(spot)
+    b = ad.solve(dataclasses.replace(spot, pot=spot.pot * 3))
+    assert _max_diff(a.action_values, b.action_values) > TOL
+
+
+# --- audit-1 F2: stack changes the answer (stack-capped shove size)
+def test_stack_change_changes_answer():
+    spot = generate_catalog(families=("river-oop-bet-or-check",), solve=SolveParams(iterations=60), limit=1)[0]
+    ad = SolverAdapter()
+    short = dataclasses.replace(spot, stacks=(40, 40), bet_sizes=(40,))
+    deep = dataclasses.replace(spot, stacks=(150, 150), bet_sizes=(150,))
+    assert short.params_hash() != deep.params_hash()
+    a, b = ad.solve(short), ad.solve(deep)
+    check_a = [p for act, p in a.strategy.items() if act.kind == "check"][0]
+    check_b = [p for act, p in b.strategy.items() if act.kind == "check"][0]
+    assert abs(check_a - check_b) > 1e-3

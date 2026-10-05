@@ -59,6 +59,11 @@ STATIC_SECURITY_HEADERS: dict[str, str] = {
     "Referrer-Policy": "no-referrer",
 }
 
+#: Security headers for JSON error pages (nosniff is already added by _send_json).
+_ERROR_SECURITY_HEADERS: dict[str, str] = {
+    k: v for k, v in STATIC_SECURITY_HEADERS.items() if k != "X-Content-Type-Options"
+}
+
 DispatchFn = Callable[[dict[str, Any]], Any]
 
 
@@ -135,6 +140,8 @@ class PracticeHandler(BaseHTTPRequestHandler):
     server_version = "PokerPractice/1"
     sys_version = ""
     protocol_version = "HTTP/1.1"
+    #: Socket timeout (seconds) so a short/slow request body cannot pin a thread.
+    timeout = 30
 
     # Set per-server via a subclass in make_server.
     web_dir: Path = DEFAULT_WEB_DIR
@@ -177,7 +184,9 @@ class PracticeHandler(BaseHTTPRequestHandler):
             self.wfile.write(body)
 
     def _error(self, status: int, message: str, extra_headers: dict[str, str] | None = None) -> None:
-        self._send_json(status, {"error": message}, extra_headers)
+        headers = dict(_ERROR_SECURITY_HEADERS)
+        headers.update(extra_headers or {})
+        self._send_json(status, {"error": message}, headers)
 
     def _method_not_allowed(self) -> None:
         path = self._path()
@@ -255,6 +264,9 @@ class PracticeHandler(BaseHTTPRequestHandler):
         except (ValueError, UnicodeDecodeError) as exc:
             self._error(400, f"malformed JSON: {exc}")
             return
+        except RecursionError:
+            self._error(400, "malformed JSON: nesting too deep")
+            return
         if not isinstance(data, dict):
             self._error(400, "request must be a JSON object")
             return
@@ -279,6 +291,21 @@ class PracticeHandler(BaseHTTPRequestHandler):
     do_DELETE = do_PUT
     do_PATCH = do_PUT
     do_OPTIONS = do_PUT
+    do_TRACE = do_PUT
+    do_CONNECT = do_PUT
+
+    def send_error(self, code: int, message: str | None = None, explain: str | None = None) -> None:
+        """JSON error bodies everywhere; unknown methods (stdlib 501) become 405."""
+        if code == 501 and self.command and self.command.isalpha():
+            self.close_connection = True
+            self._error(405, f"method {self.command} not allowed",
+                        None)
+            return
+        if code in (400, 408, 414, 431) or self.command is None or not hasattr(self, "headers"):
+            super().send_error(code, message, explain)
+            return
+        self.close_connection = True
+        self._error(code, message or "error")
 
 
 def make_server(

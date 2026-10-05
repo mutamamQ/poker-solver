@@ -1,4 +1,4 @@
-updated=2026-10-05T01:16:14Z
-wave=W3-audit (dispatching)
-waiting_on=3 bryant-opus-55 non-author auditors vs research/practice-mode/w3-audit/CANDIDATE_MANIFEST.md
-next_action=repair reproduced findings, re-audit, commit, then FINISH (server on :7777, report, tag)
+updated=2026-10-05T01:38:20Z
+wave=W3-audit (round 1 repaired)
+waiting_on=W3 re-audit round 2 (bryant-opus-55)
+next_action=on clean re-audit: PRACTICE_MODE_REPORT.md, tag practice-mode-done, keep server on 127.0.0.1:7777

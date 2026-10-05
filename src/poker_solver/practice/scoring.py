@@ -65,7 +65,10 @@ def _is_number(value: Any) -> bool:
 def _finite(value: Any, label: str) -> float:
     if not _is_number(value):
         raise ValueError(f"{label} must be a number")
-    result = float(value)
+    try:
+        result = float(value)
+    except OverflowError as exc:
+        raise ValueError(f"{label} must be finite") from exc
     if not math.isfinite(result):
         raise ValueError(f"{label} must be finite")
     return result
@@ -321,7 +324,8 @@ def _feedback(strategy: Mapping[Action, float], q: Mapping[Action, float],
             f"EV loss {ev_loss:.3f} chips ({pct:.2f}% pot) -> {grade}. "
             f"Best EV action: {_action_label(best_action)} (Q={best_q:+.3f})")
     chosen = set(play.distribution) if not play.is_mix else set()
-    alternatives = [(a, p) for a, p in mix if a not in chosen and p > 0.0]
+    alternatives = [(a, p) for a, p in mix
+                    if a not in chosen and a != best_action and p > 0.0]
     if alternatives:
         alt = alternatives[0][0]
         text += f"; most-weighted alternative: {_action_label(alt)} (Q={q[alt]:+.3f})"
