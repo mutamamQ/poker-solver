@@ -1,4 +1,4 @@
-updated=2026-10-02T21:19:49Z
-wave=Practice design wave retries (02 adapter, 06 solver-eval)
-waiting_on=2 bryant retries: 02 OPENAI_GPT6_1_SOL, 06 CLAUDE_V5_5_OPUS
-next_action=On completion inspect 02/06, reconcile 01-06 into PRACTICE_MODE_DESIGN.md, commit design wave, dispatch impl wave 1 (6 owners)
+updated=2026-10-05T00:57:36Z
+wave=W2-frontend (dispatching)
+waiting_on=3 bryant-opus-55 subagents: (a) web/index.html+app.js (b) web/style.css (c) server/web integration + tests/test_practice_ui.py
+next_action=on return: integrate, full suite (>=990), commit W2, dispatch W3 audit

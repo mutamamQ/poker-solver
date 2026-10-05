@@ -536,8 +536,22 @@ def dispatch_v4(data: dict[str, Any]) -> dict[str, Any]:
     operation = _str(
         request["operation"],
         "operation",
-        allowed={"solve-allstreet-postflop", "solve-nplayer-postflop", "solve-nplayer-preflop"},
+        allowed={
+            "solve-allstreet-postflop",
+            "solve-nplayer-postflop",
+            "solve-nplayer-preflop",
+            "practice-list-spots",
+            "practice-solve-spot",
+            "practice-submit-play",
+        },
     )
+    if operation.startswith("practice-"):
+        # Practice mode: every answer comes from a runtime solve in practice.api.
+        try:
+            from .practice.api import handle_practice
+        except ImportError as exc:
+            raise ValueError(f"practice module not available: {exc}") from exc
+        return handle_practice(operation, request["payload"])
     if operation == "solve-nplayer-preflop":
         return _dispatch_nplayer_preflop(request["payload"])
     if operation == "solve-nplayer-postflop":
